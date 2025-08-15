@@ -87,7 +87,7 @@ func NewS3Uploader(cfg *config.Config, logger *logger.Logger) (*S3Uploader, erro
 }
 
 // UploadStream uploads data from a reader to S3 using multipart upload for large files
-func (u *S3Uploader) UploadStream(ctx context.Context, reader io.Reader, estimatedSize int64, tracker *progress.Tracker) error {
+func (u *S3Uploader) UploadStream(ctx context.Context, reader io.Reader, estimatedSize int64, tracker progress.Tracker) error {
         // Check if we should use multipart upload
         if estimatedSize > u.config.ChunkSize {
                 return u.uploadMultipart(ctx, reader, estimatedSize, tracker)
@@ -98,7 +98,7 @@ func (u *S3Uploader) UploadStream(ctx context.Context, reader io.Reader, estimat
 }
 
 // uploadSinglePart uploads a file in a single part
-func (u *S3Uploader) uploadSinglePart(ctx context.Context, reader io.Reader, tracker *progress.Tracker) error {
+func (u *S3Uploader) uploadSinglePart(ctx context.Context, reader io.Reader, tracker progress.Tracker) error {
         u.logger.Info("Using single-part upload")
 
         // For single part uploads, we need to buffer the entire content
@@ -127,7 +127,7 @@ func (u *S3Uploader) uploadSinglePart(ctx context.Context, reader io.Reader, tra
 }
 
 // uploadMultipart uploads a file using multipart upload
-func (u *S3Uploader) uploadMultipart(ctx context.Context, reader io.Reader, estimatedSize int64, tracker *progress.Tracker) error {
+func (u *S3Uploader) uploadMultipart(ctx context.Context, reader io.Reader, estimatedSize int64, tracker progress.Tracker) error {
         u.logger.Info("Using multipart upload")
 
         // Create multipart upload

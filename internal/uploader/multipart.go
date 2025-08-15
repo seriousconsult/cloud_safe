@@ -24,11 +24,11 @@ type MultipartUpload struct {
 	partNumber int32
 	mu         sync.Mutex
 	logger     *logger.Logger
-	tracker    *progress.Tracker
+	tracker    progress.Tracker
 }
 
 // NewMultipartUpload creates a new multipart upload
-func NewMultipartUpload(client *s3.Client, bucket, key string, logger *logger.Logger, tracker *progress.Tracker) (*MultipartUpload, error) {
+func NewMultipartUpload(client *s3.Client, bucket, key string, logger *logger.Logger, tracker progress.Tracker) (*MultipartUpload, error) {
 	input := &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
