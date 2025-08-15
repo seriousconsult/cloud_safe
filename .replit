@@ -1,4 +1,4 @@
-modules = ["go"]
+modules = ["go", "go-1.21"]
 [agent]
 expertMode = true
 
@@ -6,7 +6,7 @@ expertMode = true
 channel = "stable-25_05"
 
 [workflows]
-runButton = "Project"
+runButton = "Build and Run TUI"
 
 [[workflows.workflow]]
 name = "Project"
@@ -39,3 +39,21 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "go mod tidy && go build -o cloudsync . && ./cloudsync --help"
+
+[[workflows.workflow]]
+name = "Build and Run TUI"
+author = 46466180
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go mod tidy && go build -o cloudarchiver . && ./cloudarchiver tui"
+
+[[workflows.workflow]]
+name = "Show Help"
+author = 46466180
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go mod tidy && go build -o cloudarchiver . && ./cloudarchiver --help"
