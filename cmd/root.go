@@ -10,7 +10,9 @@ import (
 	"cloudarchiver/internal/config"
 	"cloudarchiver/internal/logger"
 	"cloudarchiver/internal/pipeline"
+	"cloudarchiver/internal/tui"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +38,13 @@ to minimize memory usage regardless of directory size.`,
 	RunE: run,
 }
 
+var tuiCmd = &cobra.Command{
+	Use:   "tui",
+	Short: "Launch interactive TUI interface",
+	Long:  "Launch the interactive Text User Interface for CloudArchiver",
+	RunE:  runTUI,
+}
+
 func Execute() error {
 	return rootCmd.Execute()
 }
@@ -54,6 +63,9 @@ func init() {
 	rootCmd.MarkFlagRequired("source")
 	rootCmd.MarkFlagRequired("bucket")
 	rootCmd.MarkFlagRequired("key")
+	
+	// Add TUI subcommand
+	rootCmd.AddCommand(tuiCmd)
 }
 
 func run(cmd *cobra.Command, args []string) error {
@@ -109,5 +121,18 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	log.Info("Upload completed successfully")
+	return nil
+}
+
+func runTUI(cmd *cobra.Command, args []string) error {
+	// Create and run the TUI
+	model := tui.NewModel()
+	program := tea.NewProgram(model, tea.WithAltScreen())
+	
+	_, err := program.Run()
+	if err != nil {
+		return fmt.Errorf("TUI error: %w", err)
+	}
+	
 	return nil
 }
