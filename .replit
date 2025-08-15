@@ -1,2 +1,41 @@
+modules = ["go"]
 [agent]
 expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Go Build and Run"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "go_build_and_run"
+
+[[workflows.workflow]]
+name = "Go Build and Run"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go mod tidy && go build -o cloud-uploader . && ./cloud-uploader --help"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "go_build_and_run"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go mod tidy && go build -o cloudsync . && ./cloudsync --help"
