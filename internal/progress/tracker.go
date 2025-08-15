@@ -1,5 +1,11 @@
 package progress
 
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
 // Tracker interface for progress tracking
 type Tracker interface {
         Update(bytes int64)
@@ -15,4 +21,3 @@ type Tracker interface {
 func NewTracker(totalSize int64) Tracker {
         return NewSimpleTracker(totalSize)
 }
-
