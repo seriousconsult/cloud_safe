@@ -5,7 +5,6 @@ import (
         "context"
         "fmt"
         "io"
-        "os"
         "sync"
         "time"
 
@@ -16,7 +15,6 @@ import (
 
         "github.com/aws/aws-sdk-go-v2/aws"
         awsconfig "github.com/aws/aws-sdk-go-v2/config"
-        "github.com/aws/aws-sdk-go-v2/credentials"
         "github.com/aws/aws-sdk-go-v2/service/s3"
         "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -42,39 +40,12 @@ func NewS3Uploader(cfg *config.Config, logger *logger.Logger) (*S3Uploader, erro
         var awsCfg aws.Config
         var err error
 
-        // Always try to load from shared config profile first (defaults to "sean")
-        logger.Infof("Attempting to load AWS config with profile: %s", cfg.AWSProfile)
+        // Load AWS configuration using default credential chain
+        logger.Infof("Loading AWS config with profile: %s", cfg.AWSProfile)
         awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
                 awsconfig.WithRegion(cfg.AWSRegion),
                 awsconfig.WithSharedConfigProfile(cfg.AWSProfile),
         )
-        
-        // If profile loading fails, fall back to environment variables
-        if err != nil {
-                logger.Errorf("Profile loading failed: %v", err)
-                accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
-                secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-                sessionToken := os.Getenv("AWS_SESSION_TOKEN")
-                
-                logger.Infof("Falling back to environment variables (AccessKey present: %t)", accessKey != "")
-                
-                if accessKey != "" && secretKey != "" {
-                        creds := credentials.NewStaticCredentialsProvider(accessKey, secretKey, sessionToken)
-                        awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
-                                awsconfig.WithRegion(cfg.AWSRegion),
-                                awsconfig.WithCredentialsProvider(creds),
-                        )
-                        logger.Infof("Using static credentials from environment variables")
-                } else {
-                        // Final fallback to default config
-                        logger.Infof("Using default AWS config (no explicit credentials)")
-                        awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
-                                awsconfig.WithRegion(cfg.AWSRegion),
-                        )
-                }
-        } else {
-                logger.Infof("Successfully loaded AWS config with profile: %s", cfg.AWSProfile)
-        }
 
         if err != nil {
                 return nil, fmt.Errorf("failed to load AWS config: %w", err)
