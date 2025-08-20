@@ -18,7 +18,7 @@ var (
         cfgFile    string
         sourcePath string
         s3Bucket   string
-        s3Key      string
+        s3Filename string
         workers    int
         chunkSize  int64
         bufferSize int
@@ -43,8 +43,8 @@ func Execute() error {
 
 func init() {
         rootCmd.Flags().StringVarP(&sourcePath, "source", "s", "", "Source directory to archive (required)")
-        rootCmd.Flags().StringVarP(&s3Bucket, "bucket", "b", "", "S3 bucket name (required)")
-        rootCmd.Flags().StringVarP(&s3Key, "key", "k", "", "S3 object key (required)")
+        rootCmd.Flags().StringVarP(&s3Bucket, "bucket", "b", "safe-storage-24", "S3 bucket name (default: safe-storage-24)")
+        rootCmd.Flags().StringVarP(&s3Filename, "filename", "f", "", "S3 object filename (required)")
         rootCmd.Flags().IntVarP(&workers, "workers", "w", 4, "Number of concurrent workers")
         rootCmd.Flags().Int64Var(&chunkSize, "chunk-size", 100*1024*1024, "Chunk size for multipart upload (bytes)")
         rootCmd.Flags().IntVar(&bufferSize, "buffer-size", 64*1024, "Buffer size for streaming operations (bytes)")
@@ -53,9 +53,24 @@ func init() {
         rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 
         rootCmd.MarkFlagRequired("source")
-        rootCmd.MarkFlagRequired("bucket")
-        rootCmd.MarkFlagRequired("key")
+        rootCmd.MarkFlagRequired("filename")
         
+}
+
+// getAWSProfile returns the AWS profile to use, defaulting to "sean"
+func getAWSProfile() string {
+        if profile := os.Getenv("AWS_PROFILE"); profile != "" {
+                return profile
+        }
+        return "sean"
+}
+
+// getAWSRegion returns the AWS region to use, defaulting to "us-east-1"
+func getAWSRegion() string {
+        if region := os.Getenv("AWS_REGION"); region != "" {
+                return region
+        }
+        return "us-east-1"
 }
 
 func run(cmd *cobra.Command, args []string) error {
@@ -66,19 +81,16 @@ func run(cmd *cobra.Command, args []string) error {
         cfg := &config.Config{
                 SourcePath: sourcePath,
                 S3Bucket:   s3Bucket,
-                S3Key:      s3Key,
+                S3Filename: s3Filename,
                 Workers:    workers,
                 ChunkSize:  chunkSize,
                 BufferSize: bufferSize,
                 Encrypt:    encrypt,
                 Resume:     resume,
-                AWSRegion:  os.Getenv("AWS_REGION"),
-                AWSProfile: os.Getenv("AWS_PROFILE"),
+                AWSRegion:  getAWSRegion(),
+                AWSProfile: getAWSProfile(),
         }
 
-        if cfg.AWSRegion == "" {
-                cfg.AWSRegion = "us-east-1"
-        }
 
         // Validate source path
         if _, err := os.Stat(cfg.SourcePath); os.IsNotExist(err) {
@@ -104,7 +116,7 @@ func run(cmd *cobra.Command, args []string) error {
                 return fmt.Errorf("failed to create processor: %w", err)
         }
 
-        log.Infof("Starting archive upload: %s -> s3://%s/%s", cfg.SourcePath, cfg.S3Bucket, cfg.S3Key)
+        log.Infof("Starting archive upload: %s -> s3://%s/%s", cfg.SourcePath, cfg.S3Bucket, cfg.S3Filename)
         
         if err := processor.Process(ctx); err != nil {
                 return fmt.Errorf("upload failed: %w", err)

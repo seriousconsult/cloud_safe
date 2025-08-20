@@ -31,35 +31,49 @@ type S3Uploader struct {
 
 // NewS3Uploader creates a new S3 uploader
 func NewS3Uploader(cfg *config.Config, logger *logger.Logger) (*S3Uploader, error) {
-        // Load AWS configuration
+        // Log AWS configuration being used
+        logger.Infof("AWS Configuration:")
+        logger.Infof("  Region: %s", cfg.AWSRegion)
+        logger.Infof("  Profile: %s", cfg.AWSProfile)
+        logger.Infof("  S3 Bucket: %s", cfg.S3Bucket)
+        logger.Infof("  S3 Filename: %s", cfg.S3Filename)
+
+        // Load AWS configuration - prioritize profile-based credentials
         var awsCfg aws.Config
         var err error
 
-        if cfg.AWSProfile != "" {
-                awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
-                        awsconfig.WithRegion(cfg.AWSRegion),
-                        awsconfig.WithSharedConfigProfile(cfg.AWSProfile),
-                )
-        } else {
-                // Try to load from environment variables or instance metadata
-                awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
-                        awsconfig.WithRegion(cfg.AWSRegion),
-                )
+        // Always try to load from shared config profile first (defaults to "sean")
+        logger.Infof("Attempting to load AWS config with profile: %s", cfg.AWSProfile)
+        awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
+                awsconfig.WithRegion(cfg.AWSRegion),
+                awsconfig.WithSharedConfigProfile(cfg.AWSProfile),
+        )
+        
+        // If profile loading fails, fall back to environment variables
+        if err != nil {
+                logger.Errorf("Profile loading failed: %v", err)
+                accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+                secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+                sessionToken := os.Getenv("AWS_SESSION_TOKEN")
                 
-                // If no credentials are found, check for explicit environment variables
-                if err != nil {
-                        accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
-                        secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-                        sessionToken := os.Getenv("AWS_SESSION_TOKEN")
-                        
-                        if accessKey != "" && secretKey != "" {
-                                creds := credentials.NewStaticCredentialsProvider(accessKey, secretKey, sessionToken)
-                                awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
-                                        awsconfig.WithRegion(cfg.AWSRegion),
-                                        awsconfig.WithCredentialsProvider(creds),
-                                )
-                        }
+                logger.Infof("Falling back to environment variables (AccessKey present: %t)", accessKey != "")
+                
+                if accessKey != "" && secretKey != "" {
+                        creds := credentials.NewStaticCredentialsProvider(accessKey, secretKey, sessionToken)
+                        awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
+                                awsconfig.WithRegion(cfg.AWSRegion),
+                                awsconfig.WithCredentialsProvider(creds),
+                        )
+                        logger.Infof("Using static credentials from environment variables")
+                } else {
+                        // Final fallback to default config
+                        logger.Infof("Using default AWS config (no explicit credentials)")
+                        awsCfg, err = awsconfig.LoadDefaultConfig(context.Background(),
+                                awsconfig.WithRegion(cfg.AWSRegion),
+                        )
                 }
+        } else {
+                logger.Infof("Successfully loaded AWS config with profile: %s", cfg.AWSProfile)
         }
 
         if err != nil {
@@ -110,7 +124,7 @@ func (u *S3Uploader) uploadSinglePart(ctx context.Context, reader io.Reader, tra
 
         input := &s3.PutObjectInput{
                 Bucket: aws.String(u.config.S3Bucket),
-                Key:    aws.String(u.config.S3Key),
+                Key:    aws.String(u.config.S3Filename),
                 Body:   bytes.NewReader(buffer.Bytes()),
         }
 
@@ -131,7 +145,7 @@ func (u *S3Uploader) uploadMultipart(ctx context.Context, reader io.Reader, esti
         u.logger.Info("Using multipart upload")
 
         // Create multipart upload
-        multipart, err := NewMultipartUpload(u.client, u.config.S3Bucket, u.config.S3Key, u.logger, tracker)
+        multipart, err := NewMultipartUpload(u.client, u.config.S3Bucket, u.config.S3Filename, u.logger, tracker)
         if err != nil {
                 return fmt.Errorf("failed to create multipart upload: %w", err)
         }
@@ -272,7 +286,7 @@ func (u *S3Uploader) CheckResumability(ctx context.Context) (*MultipartUpload, e
         // List ongoing multipart uploads
         input := &s3.ListMultipartUploadsInput{
                 Bucket: aws.String(u.config.S3Bucket),
-                Prefix: aws.String(u.config.S3Key),
+                Prefix: aws.String(u.config.S3Filename),
         }
 
         output, err := u.client.ListMultipartUploads(ctx, input)
@@ -282,13 +296,13 @@ func (u *S3Uploader) CheckResumability(ctx context.Context) (*MultipartUpload, e
 
         // Look for an existing upload for our key
         for _, upload := range output.Uploads {
-                if *upload.Key == u.config.S3Key {
+                if *upload.Key == u.config.S3Filename {
                         u.logger.Infof("Found resumable upload: %s", *upload.UploadId)
                         
                         multipart := &MultipartUpload{
                                 client:   u.client,
                                 bucket:   u.config.S3Bucket,
-                                key:      u.config.S3Key,
+                                key:      u.config.S3Filename,
                                 uploadID: *upload.UploadId,
                                 logger:   u.logger,
                         }
@@ -314,7 +328,7 @@ func (u *S3Uploader) CheckResumability(ctx context.Context) (*MultipartUpload, e
 func (u *S3Uploader) getExistingParts(ctx context.Context, uploadID string) ([]types.CompletedPart, error) {
         input := &s3.ListPartsInput{
                 Bucket:   aws.String(u.config.S3Bucket),
-                Key:      aws.String(u.config.S3Key),
+                Key:      aws.String(u.config.S3Filename),
                 UploadId: aws.String(uploadID),
         }
 

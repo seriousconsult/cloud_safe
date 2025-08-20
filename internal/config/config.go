@@ -9,7 +9,7 @@ type Config struct {
 
         // S3 configuration
         S3Bucket   string
-        S3Key      string
+        S3Filename string
         AWSRegion  string
         AWSProfile string
 

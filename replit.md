@@ -12,9 +12,6 @@ CloudArchiver is a Go application for compressing, encrypting, and uploading lar
 - Real-time progress tracking with ETA
 - Buffer pooling for optimal memory management
 
-## User Preferences
-
-Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
@@ -32,6 +29,15 @@ Preferred communication style: Simple, everyday language.
 - Worker pool pattern for concurrent uploads
 - Interface-based design for pluggable storage backends
 
+## Required Command Line Arguments
+
+**Mandatory flags:**
+- `--source` or `-s` - Source directory to archive
+- `--filename` or `-f` - S3 object filename
+
+**Optional flags:**
+- `--bucket` or `-b` - S3 bucket name (default: safe-storage-24)
+
 ## External Dependencies
 
 **Cloud Storage:**
@@ -44,4 +50,4 @@ Preferred communication style: Simple, everyday language.
 
 **Build Requirements:**
 - Go 1.19+
-- AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION)
+- AWS credentials via `~/.aws/credentials` file with `[sean]` profile (or set AWS_PROFILE environment variable)

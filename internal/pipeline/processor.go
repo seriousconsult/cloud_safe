@@ -184,8 +184,8 @@ func (p *Processor) Validate() error {
                 return fmt.Errorf("S3 bucket is required")
         }
 
-        if p.config.S3Key == "" {
-                return fmt.Errorf("S3 key is required")
+        if p.config.S3Filename == "" {
+                return fmt.Errorf("S3 filename is required")
         }
 
         return nil
