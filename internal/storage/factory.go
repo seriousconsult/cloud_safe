@@ -3,8 +3,8 @@ package storage
 import (
 	"fmt"
 
-	"cloudarchiver/internal/config"
-	"cloudarchiver/internal/logger"
+	"cloud_safe/internal/config"
+	"cloud_safe/internal/logger"
 )
 
 // NewStorageProvider creates a new storage provider based on the configuration
@@ -32,11 +32,8 @@ func NewStorageProvider(cfg *config.Config, log *logger.Logger) (StorageProvider
 		}, log)
 	case string(ProviderMega):
 		return NewMegaProvider(&MegaConfig{
-			Username:  cfg.MegaUsername,
-			Password:  cfg.MegaPassword,
 			Filename:  cfg.S3Filename, // Reuse filename field
 			ChunkSize: cfg.ChunkSize,
-			Resume:    cfg.Resume,
 		}, log)
 	case string(ProviderMinIO):
 		return NewMinIOProvider(&MinIOConfig{

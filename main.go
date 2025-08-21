@@ -1,7 +1,7 @@
 package main
 
 import (
-	"cloudarchiver/cmd"
+	"cloud_safe/cmd"
 	"os"
 )
 

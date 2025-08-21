@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"cloudarchiver/internal/logger"
-	"cloudarchiver/internal/progress"
+	"cloud_safe/internal/logger"
+	"cloud_safe/internal/progress"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"

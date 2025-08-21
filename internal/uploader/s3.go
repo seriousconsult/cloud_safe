@@ -8,10 +8,10 @@ import (
         "sync"
         "time"
 
-        "cloudarchiver/internal/config"
-        "cloudarchiver/internal/logger"
-        "cloudarchiver/internal/progress"
-        "cloudarchiver/internal/utils"
+        "cloud_safe/internal/config"
+        "cloud_safe/internal/logger"
+        "cloud_safe/internal/progress"
+        "cloud_safe/internal/utils"
 
         "github.com/aws/aws-sdk-go-v2/aws"
         awsconfig "github.com/aws/aws-sdk-go-v2/config"

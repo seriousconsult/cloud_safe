@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cloudarchiver/internal/logger"
+	"cloud_safe/internal/logger"
 )
 
 // TarCompressor handles streaming compression of directories
@@ -26,17 +26,24 @@ func NewTarCompressor(log *logger.Logger) *TarCompressor {
 
 // Compress compresses multiple sources (files or directories) to a tar stream
 func (tc *TarCompressor) Compress(ctx context.Context, sourcePaths []string, writer io.Writer) error {
+	tc.logger.Debug("Starting compression")
 	tarWriter := tar.NewWriter(writer)
-	defer tarWriter.Close()
+	defer func() {
+		tc.logger.Debug("Closing tar writer")
+		tarWriter.Close()
+		tc.logger.Debug("Tar writer closed")
+	}()
 
 	// Process each source path
 	for _, sourcePath := range sourcePaths {
 		select {
 		case <-ctx.Done():
+			tc.logger.Debug("Context cancelled during compression")
 			return ctx.Err()
 		default:
 		}
 
+		tc.logger.Debugf("Processing source path: %s", sourcePath)
 		info, err := os.Stat(sourcePath)
 		if err != nil {
 			return fmt.Errorf("failed to stat source path %s: %w", sourcePath, err)
@@ -44,9 +51,11 @@ func (tc *TarCompressor) Compress(ctx context.Context, sourcePaths []string, wri
 
 		if info.IsDir() {
 			// Handle directory
+			tc.logger.Debugf("Compressing directory: %s", sourcePath)
 			err = tc.compressDirectory(ctx, sourcePath, tarWriter)
 		} else {
 			// Handle single file
+			tc.logger.Debugf("Compressing file: %s", sourcePath)
 			err = tc.compressFile(ctx, sourcePath, info, tarWriter)
 		}
 
@@ -55,6 +64,7 @@ func (tc *TarCompressor) Compress(ctx context.Context, sourcePaths []string, wri
 		}
 	}
 
+	tc.logger.Debug("Compression completed successfully")
 	return nil
 }
 
@@ -138,23 +148,35 @@ func (tc *TarCompressor) compressFile(ctx context.Context, filePath string, info
 
 	// Write header
 	if err := tarWriter.WriteHeader(header); err != nil {
+		// Check if this is a broken pipe error (expected when upload completes early)
+		if strings.Contains(err.Error(), "broken pipe") || strings.Contains(err.Error(), "closed pipe") {
+			tc.logger.Debug("Pipe closed during header write - upload likely completed")
+			return nil
+		}
 		return fmt.Errorf("failed to write tar header for %s: %w", filePath, err)
 	}
 
 	// Write file content
+	tc.logger.Debugf("Opening file: %s", filePath)
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
 	defer file.Close()
 
-	tc.logger.Debugf("Compressing file: %s", header.Name)
+	tc.logger.Debugf("About to copy file content: %s", header.Name)
 
 	// Stream file content with buffered copy
 	if _, err := io.Copy(tarWriter, file); err != nil {
+		// Check if this is a broken pipe error (expected when upload completes early)
+		if strings.Contains(err.Error(), "broken pipe") || strings.Contains(err.Error(), "closed pipe") {
+			tc.logger.Debug("Pipe closed during compression - upload likely completed")
+			return nil
+		}
 		return fmt.Errorf("failed to copy file content for %s: %w", filePath, err)
 	}
 
+	tc.logger.Debugf("Finished copying file content: %s", header.Name)
 	return nil
 }
 

@@ -6,8 +6,8 @@ import (
 	"io"
 	"sync"
 
-	"cloudarchiver/internal/logger"
-	"cloudarchiver/internal/progress"
+	"cloud_safe/internal/logger"
+	"cloud_safe/internal/progress"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"

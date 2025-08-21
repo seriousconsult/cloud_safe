@@ -2,7 +2,7 @@
 
 ## Overview
 
-CloudArchiver is a Go application for compressing, encrypting, and uploading large directories to multiple cloud storage providers. It uses streaming processing to handle very large directories efficiently with minimal memory usage.
+CloudSafe is a Go application for compressing, encrypting, and uploading large directories to multiple cloud storage providers. It uses streaming processing to handle very large directories efficiently with minimal memory usage.
 
 **Key Features:**
 - Streaming TAR compression for memory efficiency
@@ -96,31 +96,15 @@ CloudArchiver is a Go application for compressing, encrypting, and uploading lar
 
 ## Usage Examples
 
-**Upload to AWS S3:**
-```bash
-cloudarchiver -s /path/to/files -p s3 -b my-bucket -f archive.tar.gz.enc
-```
-
-**Upload to Google Drive:**
-```bash
-cloudarchiver -s /path/to/files -p googledrive \
-  --gd-credentials credentials.json \
-  --gd-token token.json \
-  --gd-folder "folder-id" \
-  -f archive.tar.gz.enc
-```
-
-**Upload to Mega:**
-```bash
-cloudarchiver -s /path/to/files -p mega \
-  --mega-username your@email.com \
-  --mega-password yourpassword \
+- S3: `cloud_safe -s /path -p s3 -b bucket -f file.tar`
+- Google Drive: `cloud_safe -s /path -p googledrive --gd-credentials creds.json -f file.tar`
+- Mega: `cloud_safe -s /path -p mega -f file.tar`
   -f archive.tar.gz.enc
 ```
 
 **Upload to MinIO:**
 ```bash
-cloudarchiver -s /path/to/files -p minio \
+cloud_safe -s /path/to/files -p minio \
   --minio-endpoint localhost:9000 \
   --minio-access-key minioadmin \
   --minio-secret-key minioadmin \
@@ -131,6 +115,6 @@ cloudarchiver -s /path/to/files -p minio \
 
 **Multiple sources:**
 ```bash
-cloudarchiver -s /path/file1.txt -s /path/dir1 -s /path/file2.txt \
+cloud_safe -s /path/file1.txt -s /path/dir1 -s /path/file2.txt \
   -p s3 -b my-bucket -f multi-source-archive.tar.gz.enc
 ```

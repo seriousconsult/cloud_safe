@@ -1,4 +1,4 @@
-module cloudarchiver
+module cloud_safe
 
 go 1.23.0
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"cloudarchiver/internal/progress"
+	"cloud_safe/internal/progress"
 )
 
 // Provider represents the type of storage provider
@@ -85,8 +85,6 @@ type GoogleDriveConfig struct {
 
 // MegaConfig holds Mega-specific configuration
 type MegaConfig struct {
-	Username  string `json:"username"`
-	Password  string `json:"password"`
 	Filename  string `json:"filename"`
 	ChunkSize int64  `json:"chunk_size"`
 	Resume    bool   `json:"resume"`

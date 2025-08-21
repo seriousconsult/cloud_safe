@@ -6,10 +6,11 @@ import (
         "os"
         "os/signal"
         "syscall"
+        "time"
 
-        "cloudarchiver/internal/config"
-        "cloudarchiver/internal/logger"
-        "cloudarchiver/internal/pipeline"
+        "cloud_safe/internal/config"
+        "cloud_safe/internal/logger"
+        "cloud_safe/internal/pipeline"
 
         "github.com/spf13/cobra"
 )
@@ -39,9 +40,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-        Use:   "cloudarchiver",
+        Use:   "cloud_safe",
         Short: "Memory-efficient streaming compression and upload to cloud storage",
-        Long: `CloudArchiver is a tool for efficiently compressing, encrypting, and uploading
+        Long: `CloudSafe is a tool for efficiently compressing, encrypting, and uploading
 large directories to cloud storage services like AWS S3. It uses streaming processing
 to minimize memory usage regardless of directory size.`,
         RunE: run,
@@ -156,11 +157,25 @@ func run(cmd *cobra.Command, args []string) error {
 
         log.Infof("Starting archive upload: %v -> %s://%s", cfg.SourcePaths, cfg.StorageProvider, cfg.S3Filename)
         
+        log.Debug("About to call processor.Process()")
         if err := processor.Process(ctx); err != nil {
                 return fmt.Errorf("upload failed: %w", err)
         }
 
+        log.Debug("processor.Process() completed successfully")
         log.Info("Upload completed successfully")
+        
+        // Special handling for Mega provider to prevent hanging
+        if cfg.StorageProvider == "mega" {
+                log.Info("Mega upload detected - forcing cleanup and exit")
+                // Give a brief moment for any final cleanup
+                time.Sleep(50 * time.Millisecond)
+                log.Debug("About to call os.Exit(0)")
+                // Force exit for Mega uploads due to library limitations
+                os.Exit(0)
+        }
+        
+        log.Debug("Returning from run() function")
         return nil
 }
 
