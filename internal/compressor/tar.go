@@ -24,12 +24,42 @@ func NewTarCompressor(log *logger.Logger) *TarCompressor {
 	}
 }
 
-// Compress compresses a directory to a tar stream
-func (tc *TarCompressor) Compress(ctx context.Context, sourcePath string, writer io.Writer) error {
+// Compress compresses multiple sources (files or directories) to a tar stream
+func (tc *TarCompressor) Compress(ctx context.Context, sourcePaths []string, writer io.Writer) error {
 	tarWriter := tar.NewWriter(writer)
 	defer tarWriter.Close()
 
-	// Walk the directory tree
+	// Process each source path
+	for _, sourcePath := range sourcePaths {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		info, err := os.Stat(sourcePath)
+		if err != nil {
+			return fmt.Errorf("failed to stat source path %s: %w", sourcePath, err)
+		}
+
+		if info.IsDir() {
+			// Handle directory
+			err = tc.compressDirectory(ctx, sourcePath, tarWriter)
+		} else {
+			// Handle single file
+			err = tc.compressFile(ctx, sourcePath, info, tarWriter)
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// compressDirectory compresses a directory recursively
+func (tc *TarCompressor) compressDirectory(ctx context.Context, sourcePath string, tarWriter *tar.Writer) error {
 	return filepath.Walk(sourcePath, func(path string, info os.FileInfo, err error) error {
 		// Check for context cancellation
 		select {
@@ -55,8 +85,13 @@ func (tc *TarCompressor) Compress(ctx context.Context, sourcePath string, writer
 			return fmt.Errorf("failed to get relative path for %s: %w", path, err)
 		}
 		
-		// Normalize path separators for tar format
-		header.Name = strings.ReplaceAll(relPath, string(filepath.Separator), "/")
+		// Use the directory name as prefix for better organization
+		dirName := filepath.Base(sourcePath)
+		if relPath == "." {
+			header.Name = dirName + "/"
+		} else {
+			header.Name = dirName + "/" + strings.ReplaceAll(relPath, string(filepath.Separator), "/")
+		}
 
 		// Write header
 		if err := tarWriter.WriteHeader(header); err != nil {
@@ -71,7 +106,7 @@ func (tc *TarCompressor) Compress(ctx context.Context, sourcePath string, writer
 			}
 			defer file.Close()
 
-			tc.logger.Debugf("Compressing file: %s", relPath)
+			tc.logger.Debugf("Compressing file: %s", header.Name)
 
 			// Stream file content with buffered copy
 			if _, err := io.Copy(tarWriter, file); err != nil {
@@ -83,21 +118,77 @@ func (tc *TarCompressor) Compress(ctx context.Context, sourcePath string, writer
 	})
 }
 
+// compressFile compresses a single file
+func (tc *TarCompressor) compressFile(ctx context.Context, filePath string, info os.FileInfo, tarWriter *tar.Writer) error {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	// Create tar header
+	header, err := tar.FileInfoHeader(info, "")
+	if err != nil {
+		return fmt.Errorf("failed to create tar header for %s: %w", filePath, err)
+	}
+
+	// Use just the filename for single files
+	header.Name = filepath.Base(filePath)
+
+	// Write header
+	if err := tarWriter.WriteHeader(header); err != nil {
+		return fmt.Errorf("failed to write tar header for %s: %w", filePath, err)
+	}
+
+	// Write file content
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	tc.logger.Debugf("Compressing file: %s", header.Name)
+
+	// Stream file content with buffered copy
+	if _, err := io.Copy(tarWriter, file); err != nil {
+		return fmt.Errorf("failed to copy file content for %s: %w", filePath, err)
+	}
+
+	return nil
+}
+
 // EstimateSize estimates the total size of files to be compressed
-func (tc *TarCompressor) EstimateSize(sourcePath string) (int64, error) {
+func (tc *TarCompressor) EstimateSize(sourcePaths []string) (int64, error) {
 	var totalSize int64
 
-	err := filepath.Walk(sourcePath, func(path string, info os.FileInfo, err error) error {
+	for _, sourcePath := range sourcePaths {
+		info, err := os.Stat(sourcePath)
 		if err != nil {
-			return err
+			return 0, fmt.Errorf("failed to stat source path %s: %w", sourcePath, err)
 		}
 
-		if info.Mode().IsRegular() {
+		if info.IsDir() {
+			// Walk directory and sum file sizes
+			err = filepath.Walk(sourcePath, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if info.Mode().IsRegular() {
+					totalSize += info.Size()
+				}
+
+				return nil
+			})
+			if err != nil {
+				return 0, err
+			}
+		} else {
+			// Single file
 			totalSize += info.Size()
 		}
+	}
 
-		return nil
-	})
-
-	return totalSize, err
+	return totalSize, nil
 }

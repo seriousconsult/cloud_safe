@@ -12,7 +12,7 @@ import (
         "cloudarchiver/internal/crypto"
         "cloudarchiver/internal/logger"
         "cloudarchiver/internal/progress"
-        "cloudarchiver/internal/uploader"
+        "cloudarchiver/internal/storage"
 )
 
 // Processor orchestrates the entire pipeline
@@ -21,7 +21,7 @@ type Processor struct {
         logger     *logger.Logger
         compressor *compressor.TarCompressor
         encryptor  *crypto.StreamEncryptor
-        uploader   *uploader.S3Uploader
+        storage    storage.StorageProvider
 }
 
 // NewProcessor creates a new processor instance
@@ -39,10 +39,10 @@ func NewProcessor(cfg *config.Config, log *logger.Logger) (*Processor, error) {
                 }
         }
 
-        // Initialize uploader
-        up, err := uploader.NewS3Uploader(cfg, log)
+        // Initialize storage provider
+        storageProvider, err := storage.NewStorageProvider(cfg, log)
         if err != nil {
-                return nil, fmt.Errorf("failed to create uploader: %w", err)
+                return nil, fmt.Errorf("failed to create storage provider: %w", err)
         }
 
         return &Processor{
@@ -50,14 +50,14 @@ func NewProcessor(cfg *config.Config, log *logger.Logger) (*Processor, error) {
                 logger:     log,
                 compressor: comp,
                 encryptor:  enc,
-                uploader:   up,
+                storage:    storageProvider,
         }, nil
 }
 
 // Process executes the complete pipeline
 func (p *Processor) Process(ctx context.Context) error {
         // Estimate total size for progress tracking
-        totalSize, err := p.compressor.EstimateSize(p.config.SourcePath)
+        totalSize, err := p.compressor.EstimateSize(p.config.SourcePaths)
         if err != nil {
                 return fmt.Errorf("failed to estimate size: %w", err)
         }
@@ -69,7 +69,7 @@ func (p *Processor) Process(ctx context.Context) error {
         defer tracker.Finish()
 
         // Check for resumable uploads
-        resumableUpload, err := p.uploader.CheckResumability(ctx)
+        resumableUpload, err := p.storage.CheckResumability(ctx)
         if err != nil {
                 p.logger.Errorf("Failed to check resumability: %v", err)
         }
@@ -87,7 +87,7 @@ func (p *Processor) Process(ctx context.Context) error {
         compressionDone := make(chan error, 1)
         go func() {
                 defer pipelineWriter.Close()
-                compressionDone <- p.compressor.Compress(ctx, p.config.SourcePath, pipelineWriter)
+                compressionDone <- p.compressor.Compress(ctx, p.config.SourcePaths, pipelineWriter)
         }()
 
         var finalReader io.Reader = pipelineReader
@@ -114,7 +114,7 @@ func (p *Processor) Process(ctx context.Context) error {
         }
 
         // Start upload
-        uploadErr := p.uploader.UploadStream(ctx, finalReader, totalSize, tracker)
+        uploadErr := p.storage.UploadStream(ctx, finalReader, totalSize, tracker)
 
         // Wait for compression to complete
         if compressionErr := <-compressionDone; compressionErr != nil {
@@ -132,7 +132,7 @@ func (p *Processor) Process(ctx context.Context) error {
 // ProcessWithProgress processes with detailed progress reporting
 func (p *Processor) ProcessWithProgress(ctx context.Context, progressCallback func(transferred, total int64, speed float64)) error {
         // Similar to Process but with custom progress callback
-        totalSize, err := p.compressor.EstimateSize(p.config.SourcePath)
+        totalSize, err := p.compressor.EstimateSize(p.config.SourcePaths)
         if err != nil {
                 return fmt.Errorf("failed to estimate size: %w", err)
         }
@@ -162,9 +162,15 @@ func (p *Processor) ProcessWithProgress(ctx context.Context, progressCallback fu
 
 // Validate validates the processor configuration
 func (p *Processor) Validate() error {
-        // Check source path
-        if _, err := os.Stat(p.config.SourcePath); os.IsNotExist(err) {
-                return fmt.Errorf("source path does not exist: %s", p.config.SourcePath)
+        // Check source paths
+        if len(p.config.SourcePaths) == 0 {
+                return fmt.Errorf("at least one source path must be specified")
+        }
+
+        for _, sourcePath := range p.config.SourcePaths {
+                if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+                        return fmt.Errorf("source path does not exist: %s", sourcePath)
+                }
         }
 
         // Validate configuration parameters

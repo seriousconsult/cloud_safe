@@ -5,13 +5,32 @@ import "os"
 // Config holds all configuration for the application
 type Config struct {
         // Source configuration
-        SourcePath string
+        SourcePaths []string
+
+        // Storage provider configuration
+        StorageProvider string
 
         // S3 configuration
         S3Bucket   string
         S3Filename string
         AWSRegion  string
         AWSProfile string
+
+        // Google Drive configuration
+        GoogleDriveCredentialsPath string
+        GoogleDriveTokenPath       string
+        GoogleDriveFolderID        string
+
+        // Mega configuration
+        MegaUsername string
+        MegaPassword string
+
+        // MinIO configuration
+        MinIOEndpoint        string
+        MinIOAccessKeyID     string
+        MinIOSecretAccessKey string
+        MinIOBucket          string
+        MinIOUseSSL          bool
 
         // Processing configuration
         Workers    int
