@@ -1,6 +1,10 @@
 package config
 
-import "os"
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+)
 
 // Config holds all configuration for the application
 type Config struct {
@@ -66,4 +70,136 @@ func (c *Config) GetEncryptionKey() []byte {
                 }
         }
         return c.EncryptionKey
+}
+
+// FileConfig represents the JSON configuration file structure
+type FileConfig struct {
+	StorageProviders map[string]interface{} `json:"storage_providers"`
+	DefaultSettings  struct {
+		StorageProvider string `json:"storage_provider"`
+		Workers         int    `json:"workers"`
+		ChunkSize       int64  `json:"chunk_size"`
+		BufferSize      int    `json:"buffer_size"`
+		Encrypt         bool   `json:"encrypt"`
+		Resume          bool   `json:"resume"`
+		EncryptionKey   string `json:"encryption_key"`
+	} `json:"default_settings"`
+}
+
+// LoadFromFile loads configuration from a JSON file and merges with existing config
+func (c *Config) LoadFromFile(configPath string) error {
+	// Check if config file exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		// Config file doesn't exist, return without error (use defaults/CLI flags)
+		return nil
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+
+	var fileConfig FileConfig
+	if err := json.Unmarshal(data, &fileConfig); err != nil {
+		return err
+	}
+
+	// Apply default settings if not already set
+	if c.StorageProvider == "" && fileConfig.DefaultSettings.StorageProvider != "" {
+		c.StorageProvider = fileConfig.DefaultSettings.StorageProvider
+	}
+	if c.Workers == 0 && fileConfig.DefaultSettings.Workers > 0 {
+		c.Workers = fileConfig.DefaultSettings.Workers
+	}
+	if c.ChunkSize == 0 && fileConfig.DefaultSettings.ChunkSize > 0 {
+		c.ChunkSize = fileConfig.DefaultSettings.ChunkSize
+	}
+	if c.BufferSize == 0 && fileConfig.DefaultSettings.BufferSize > 0 {
+		c.BufferSize = fileConfig.DefaultSettings.BufferSize
+	}
+
+	// Apply provider-specific settings
+	if providerConfig, exists := fileConfig.StorageProviders[c.StorageProvider]; exists {
+		switch c.StorageProvider {
+		case "s3":
+			if s3Config, ok := providerConfig.(map[string]interface{}); ok {
+				if c.S3Bucket == "" {
+					if bucket, ok := s3Config["bucket"].(string); ok {
+						c.S3Bucket = bucket
+					}
+				}
+				if c.AWSRegion == "" {
+					if region, ok := s3Config["region"].(string); ok {
+						c.AWSRegion = region
+					}
+				}
+				if c.AWSProfile == "" {
+					if profile, ok := s3Config["profile"].(string); ok {
+						c.AWSProfile = profile
+					}
+				}
+			}
+		case "googledrive":
+			if gdConfig, ok := providerConfig.(map[string]interface{}); ok {
+				if c.GoogleDriveCredentialsPath == "" {
+					if credPath, ok := gdConfig["credentials_path"].(string); ok {
+						c.GoogleDriveCredentialsPath = credPath
+					}
+				}
+				if c.GoogleDriveTokenPath == "" {
+					if tokenPath, ok := gdConfig["token_path"].(string); ok {
+						c.GoogleDriveTokenPath = tokenPath
+					}
+				}
+				if c.GoogleDriveFolderID == "" {
+					if folderID, ok := gdConfig["folder_id"].(string); ok {
+						c.GoogleDriveFolderID = folderID
+					}
+				}
+			}
+		case "mega":
+			if megaConfig, ok := providerConfig.(map[string]interface{}); ok {
+				if c.MegaUsername == "" {
+					if username, ok := megaConfig["username"].(string); ok {
+						c.MegaUsername = username
+					}
+				}
+				if c.MegaPassword == "" {
+					if password, ok := megaConfig["password"].(string); ok {
+						c.MegaPassword = password
+					}
+				}
+			}
+		case "minio":
+			if minioConfig, ok := providerConfig.(map[string]interface{}); ok {
+				if c.MinIOEndpoint == "" {
+					if endpoint, ok := minioConfig["endpoint"].(string); ok {
+						c.MinIOEndpoint = endpoint
+					}
+				}
+				if c.MinIOAccessKeyID == "" {
+					if accessKey, ok := minioConfig["access_key_id"].(string); ok {
+						c.MinIOAccessKeyID = accessKey
+					}
+				}
+				if c.MinIOSecretAccessKey == "" {
+					if secretKey, ok := minioConfig["secret_access_key"].(string); ok {
+						c.MinIOSecretAccessKey = secretKey
+					}
+				}
+				if c.MinIOBucket == "" {
+					if bucket, ok := minioConfig["bucket"].(string); ok {
+						c.MinIOBucket = bucket
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// GetDefaultConfigPath returns the default path for the config file
+func GetDefaultConfigPath() string {
+	return filepath.Join(".", "config.json")
 }

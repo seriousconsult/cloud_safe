@@ -100,7 +100,6 @@ CloudSafe is a Go application for compressing, encrypting, and uploading large d
 - Google Drive: `cloud_safe -s /path -p googledrive --gd-credentials creds.json -f file.tar`
 - Mega: `cloud_safe -s /path -p mega -f file.tar`
   -f archive.tar.gz.enc
-```
 
 **Upload to MinIO:**
 ```bash
@@ -117,4 +116,18 @@ cloud_safe -s /path/to/files -p minio \
 ```bash
 cloud_safe -s /path/file1.txt -s /path/dir1 -s /path/file2.txt \
   -p s3 -b my-bucket -f multi-source-archive.tar.gz.enc
-```
+
+
+**More examples```
+# Fill in config.json with your credentials, then run:
+cloud_safe -s /path/to/source -f output.tar
+./cloud_safe --source "delete_me" --filename "delete_me.tar"
+
+# Config provides defaults, CLI flags override specific values:
+cloud_safe -s /path/to/source -f output.tar -p googledrive --gd-credentials ./creds.json
+./cloud_safe -s delete_me -f delete_me.tar -p googledrive --gd-credentials ~/.google/credentials.json
+
+#Custom config file location:
+cloud_safe -c /path/to/custom-config.json -s /path/to/source -f output.tar
+./cloud_safe -c config.json -s delete_me -f delete_me.tar
+

@@ -198,7 +198,7 @@ func (p *Processor) Validate() error {
 		}
 	}
 
-	// Validate configuration parameters
+	// Validate configuration parameters (common)
 	if p.config.Workers <= 0 {
 		return fmt.Errorf("workers must be greater than 0")
 	}
@@ -211,12 +211,44 @@ func (p *Processor) Validate() error {
 		return fmt.Errorf("buffer size must be greater than 0")
 	}
 
-	if p.config.S3Bucket == "" {
-		return fmt.Errorf("S3 bucket is required")
-	}
-
-	if p.config.S3Filename == "" {
-		return fmt.Errorf("S3 filename is required")
+	// Provider-specific validation
+	switch p.config.StorageProvider {
+	case "s3":
+		if p.config.S3Bucket == "" {
+			return fmt.Errorf("S3 bucket is required")
+		}
+		if p.config.S3Filename == "" {
+			return fmt.Errorf("target filename is required")
+		}
+	case "googledrive":
+		if p.config.GoogleDriveCredentialsPath == "" {
+			return fmt.Errorf("Google Drive credentials path is required")
+		}
+		if p.config.S3Filename == "" {
+			return fmt.Errorf("target filename is required")
+		}
+	case "mega":
+		if p.config.MegaUsername == "" || p.config.MegaPassword == "" {
+			return fmt.Errorf("Mega username and password are required")
+		}
+		if p.config.S3Filename == "" {
+			return fmt.Errorf("target filename is required")
+		}
+	case "minio":
+		if p.config.MinIOEndpoint == "" {
+			return fmt.Errorf("MinIO endpoint is required")
+		}
+		if p.config.MinIOAccessKeyID == "" || p.config.MinIOSecretAccessKey == "" {
+			return fmt.Errorf("MinIO access key and secret key are required")
+		}
+		if p.config.MinIOBucket == "" {
+			return fmt.Errorf("MinIO bucket is required")
+		}
+		if p.config.S3Filename == "" {
+			return fmt.Errorf("target filename is required")
+		}
+	default:
+		return fmt.Errorf("unsupported storage provider: %s", p.config.StorageProvider)
 	}
 
 	return nil

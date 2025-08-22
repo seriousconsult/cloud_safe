@@ -54,8 +54,10 @@ func Execute() error {
 }
 
 func init() {
+        rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "Config file (default is ./config.json)")
         rootCmd.Flags().StringSliceVarP(&sourcePaths, "source", "s", []string{}, "Source files or directories to archive (can specify multiple)")
-        rootCmd.Flags().StringVarP(&storageProvider, "provider", "p", "s3", "Storage provider (s3, googledrive, mega, minio)")
+        // Leave provider empty by default so config.json can supply the default
+    rootCmd.Flags().StringVarP(&storageProvider, "provider", "p", "", "Storage provider (s3, googledrive, mega, minio). If omitted, config.json default_settings.storage_provider is used; otherwise falls back to s3")
         rootCmd.Flags().StringVarP(&s3Bucket, "bucket", "b", "safe-storage-24", "S3 bucket name")
         rootCmd.Flags().StringVarP(&s3Filename, "filename", "f", "", "Target filename (required)")
         rootCmd.Flags().StringVar(&googleDriveCredPath, "gd-credentials", "", "Google Drive credentials JSON file path")
@@ -111,30 +113,90 @@ func run(cmd *cobra.Command, args []string) error {
                 }
         }
 
-        // Load configuration
-        cfg := &config.Config{
-                SourcePaths:                 sourcePaths,
-                StorageProvider:             storageProvider,
-                S3Bucket:                    s3Bucket,
-                S3Filename:                  s3Filename,
-                GoogleDriveCredentialsPath:  googleDriveCredPath,
-                GoogleDriveTokenPath:        googleDriveTokenPath,
-                GoogleDriveFolderID:         googleDriveFolderID,
-                MegaUsername:                megaUsername,
-                MegaPassword:                megaPassword,
-                MinIOEndpoint:               minioEndpoint,
-                MinIOAccessKeyID:            minioAccessKeyID,
-                MinIOSecretAccessKey:        minioSecretAccessKey,
-                MinIOBucket:                 minioBucket,
-                MinIOUseSSL:                 minioUseSSL,
-                Workers:                     workers,
-                ChunkSize:                   chunkSize,
-                BufferSize:                  bufferSize,
-                Encrypt:                     encrypt,
-                Resume:                      resume,
-                AWSRegion:                   getAWSRegion(),
-                AWSProfile:                  getAWSProfile(),
+        // Start with minimal config (source paths and filename are required via flags)
+    cfg := &config.Config{
+            SourcePaths: sourcePaths,
+            S3Filename:  s3Filename,
+    }
+
+        // Load configuration from file (will use defaults if file doesn't exist)
+        configPath := config.GetDefaultConfigPath()
+        if cfgFile != "" {
+                configPath = cfgFile
         }
+        if err := cfg.LoadFromFile(configPath); err != nil {
+            log.Infof("Failed to load config file %s: %v", configPath, err)
+    } else {
+            log.Debugf("Loaded configuration from %s", configPath)
+    }
+
+    // Apply CLI flags only if explicitly set, so they override config.json
+    if changed, _ := cmd.Flags().Changed("provider"); changed {
+            cfg.StorageProvider = storageProvider
+    }
+    if changed, _ := cmd.Flags().Changed("bucket"); changed {
+            cfg.S3Bucket = s3Bucket
+    }
+    if changed, _ := cmd.Flags().Changed("filename"); changed {
+            cfg.S3Filename = s3Filename
+    }
+    if changed, _ := cmd.Flags().Changed("gd-credentials"); changed {
+            cfg.GoogleDriveCredentialsPath = googleDriveCredPath
+    }
+    if changed, _ := cmd.Flags().Changed("gd-token"); changed {
+            cfg.GoogleDriveTokenPath = googleDriveTokenPath
+    }
+    if changed, _ := cmd.Flags().Changed("gd-folder"); changed {
+            cfg.GoogleDriveFolderID = googleDriveFolderID
+    }
+    if changed, _ := cmd.Flags().Changed("mega-username"); changed {
+            cfg.MegaUsername = megaUsername
+    }
+    if changed, _ := cmd.Flags().Changed("mega-password"); changed {
+            cfg.MegaPassword = megaPassword
+    }
+    if changed, _ := cmd.Flags().Changed("minio-endpoint"); changed {
+            cfg.MinIOEndpoint = minioEndpoint
+    }
+    if changed, _ := cmd.Flags().Changed("minio-access-key"); changed {
+            cfg.MinIOAccessKeyID = minioAccessKeyID
+    }
+    if changed, _ := cmd.Flags().Changed("minio-secret-key"); changed {
+            cfg.MinIOSecretAccessKey = minioSecretAccessKey
+    }
+    if changed, _ := cmd.Flags().Changed("minio-bucket"); changed {
+            cfg.MinIOBucket = minioBucket
+    }
+    if changed, _ := cmd.Flags().Changed("minio-ssl"); changed {
+            cfg.MinIOUseSSL = minioUseSSL
+    }
+    if changed, _ := cmd.Flags().Changed("workers"); changed {
+            cfg.Workers = workers
+    }
+    if changed, _ := cmd.Flags().Changed("chunk-size"); changed {
+            cfg.ChunkSize = chunkSize
+    }
+    if changed, _ := cmd.Flags().Changed("buffer-size"); changed {
+            cfg.BufferSize = bufferSize
+    }
+    if changed, _ := cmd.Flags().Changed("encrypt"); changed {
+            cfg.Encrypt = encrypt
+    }
+    if changed, _ := cmd.Flags().Changed("resume"); changed {
+            cfg.Resume = resume
+    }
+    // Always set AWS env-derived values unless config.json provided overrides
+    if cfg.AWSRegion == "" {
+            cfg.AWSRegion = getAWSRegion()
+    }
+    if cfg.AWSProfile == "" {
+            cfg.AWSProfile = getAWSProfile()
+    }
+    // Final fallback for provider if still empty
+    if cfg.StorageProvider == "" {
+            cfg.StorageProvider = "s3"
+            log.Debug("No storage provider specified via flags or config.json; defaulting to s3")
+    }
 
         // Create context with cancellation
         ctx, cancel := context.WithCancel(context.Background())
