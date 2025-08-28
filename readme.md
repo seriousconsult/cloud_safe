@@ -1,26 +1,137 @@
-Project Documentation
-Overview
+# CloudSafe - Secure Cloud Backup Tool
 
-CloudSafe is a Go application for compressing, encrypting, and uploading large directories to multiple cloud storage providers. It uses streaming processing to handle very large directories efficiently with minimal memory usage.
-Key Features:
+[![Go Version](https://img.shields.io/badge/Go-1.24.6-blue)](https://golang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-    Streaming TAR compression for memory efficiency
+CloudSafe is a high-performance Go application for securely backing up large directories to multiple cloud storage providers. It uses streaming architecture to handle files of any size with minimal memory usage, making it ideal for both personal and enterprise backup solutions.
 
-    AES-256-GCM encryption for security
+## Key Features
 
-    Multiple storage provider support (AWS S3, Google Drive, Mega, MinIO)
+- **Streaming TAR Compression** - Process files of any size with constant memory usage
+- **Military-Grade Encryption** - AES-256-GCM encryption for maximum security
+- **Multiple Storage Backends** - Supports AWS S3, Google Drive, Mega, and MinIO
+- **Resumable Uploads** - Continue interrupted uploads without starting over
+- **Concurrent Processing** - Multi-threaded uploads for maximum speed
+- **Progress Tracking** - Real-time progress with ETA and transfer rates
+- **Unified Interface** - Consistent commands across all storage providers
+## Table of Contents
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Storage Providers](#storage-providers)
+- [Examples](#examples)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-    S3/MinIO multipart uploads with resumable capability
+## Installation
 
-    Concurrent worker pools for fast uploads
+### Prerequisites
+- Go 1.24.6 or later
+- Valid credentials for your chosen cloud storage provider
 
-    Real-time progress tracking with ETA
+### From Source
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/cloud_safe.git
+cd cloud_safe
 
-    Buffer pooling for optimal memory management
+# Build the binary
+go build -o cloud_safe
 
-    Unified interface for all storage providers
+# Move to your PATH (optional)
+sudo mv cloud_safe /usr/local/bin/
+```
 
-System Architecture
+### Using Docker
+```bash
+docker build -t cloud_safe .
+docker run -v $(pwd):/data cloud_safe [command] [flags]
+```
+
+## Quick Start
+
+1. **Initialize Configuration**
+   ```bash
+   ./cloud_safe init
+   ```
+   This creates a default `config.json` in the current directory.
+
+2. **Edit Configuration**
+   ```bash
+   # Edit the config file with your preferred editor
+   nano config.json
+   ```
+
+3. **Backup a Directory**
+   ```bash
+   ./cloud_safe backup -s /path/to/backup -f my_backup.tar
+   ```
+
+## Configuration
+
+CloudSafe supports configuration via:
+1. Command-line flags (highest precedence)
+2. Environment variables
+3. Configuration file (`config.json` in working directory or specified via `--config`)
+
+### Configuration File Format
+
+```json
+{
+  "storage_providers": {
+    "s3": {
+      "bucket": "your-bucket-name",
+      "region": "us-east-1",
+      "profile": "default",
+      "chunk_size": 104857600,
+      "workers": 4,
+      "buffer_size": 65536,
+      "resume": true
+    },
+    "googledrive": {
+      "credentials_path": "~/.config/cloud_safe/credentials.json",
+      "token_path": "~/.config/cloud_safe/token.json",
+      "folder_id": ""
+    }
+  },
+  "default_settings": {
+    "storage_provider": "s3",
+    "encrypt": true,
+    "resume": true,
+    "workers": 4,
+    "chunk_size": 104857600,
+    "buffer_size": 65536
+  }
+}
+```
+
+## Usage
+
+### Basic Commands
+```bash
+# Backup files to default storage provider
+./cloud_safe backup -s /path/to/source -f backup_name
+
+# List available backups
+./cloud_safe list
+
+# Restore files from backup
+./cloud_safe restore -f backup_name -d /restore/path
+```
+
+### Common Options
+```bash
+# Use a specific config file
+./cloud_safe --config /path/to/config.json [command]
+
+# Enable verbose output
+./cloud_safe -v [command]
+
+# Show help for a command
+./cloud_safe help [command]
+```
 Core Components:
 
     cmd/root.go - CLI interface using Cobra framework
@@ -151,50 +262,4 @@ Build Requirements:
 
         MinIO: Access key ID, secret access key, and endpoint
 
-Usage Examples
-
-    S3: cloud_safe -s /path -p s3 -b bucket -f file.tar
-
-    Google Drive: cloud_safe -s /path -p googledrive --gd-credentials creds.json -f file.tar
-
-    Mega: cloud_safe -s /path -p mega -f file.tar
-
-        -f archive.tar.gz.enc
-
-Upload to MinIO:
-
-cloud_safe -s /path/to/files -p minio \
-  --minio-endpoint localhost:9000 \
-  --minio-access-key minioadmin \
-  --minio-secret-key minioadmin \
-  --minio-bucket my-bucket \
-  --minio-ssl \
-  -f archive.tar.gz.enc
-
-Multiple sources:
-
-cloud_safe -s /path/file1.txt -s /path/dir1 -s /path/file2.txt \
-  -p s3 -b my-bucket -f multi-source-archive.tar.gz.enc
-
-More examples
-
-# Fill in config.json with your credentials, then run:
-cloud_safe -s /path/to/source -f output.tar
-./cloud_safe --source "delete_me" --filename "delete_me.tar"
-
-# Config provides defaults, CLI flags override specific values:
-cloud_safe -s /path/to/source -f output.tar -p googledrive --gd-credentials ./creds.json
-./cloud_safe -s delete_me -f delete_me.tar -p googledrive --gd-credentials ~/.google/credentials.json
-
-# Custom config file location:
-cloud_safe -c /path/to/custom-config.json -s /path/to/source -f output.tar
-./cloud_safe -c config.json -s delete_me -f delete_me.tar
-
-Running Tests
-
-To run the test suite, use the pytest command. If you want to reduce the verbosity of the output and hide the lengthy tracebacks from internal library calls, use the --tb=no flag. This will show you only the test name and the final error message.
-
-enable virtual env
-source venv/bin/activate
-pytest --tb=no
-
+Ustar
