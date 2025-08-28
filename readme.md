@@ -2,12 +2,11 @@ Project Documentation
 Overview
 
 CloudSafe is a Go application for compressing, encrypting, and uploading large directories to multiple cloud storage providers. It uses streaming processing to handle very large directories efficiently with minimal memory usage.
-
 Key Features:
 
     Streaming TAR compression for memory efficiency
 
-    AES-256-GCM encryption for security  
+    AES-256-GCM encryption for security
 
     Multiple storage provider support (AWS S3, Google Drive, Mega, MinIO)
 
@@ -22,7 +21,6 @@ Key Features:
     Unified interface for all storage providers
 
 System Architecture
-
 Core Components:
 
     cmd/root.go - CLI interface using Cobra framework
@@ -32,12 +30,18 @@ Core Components:
     internal/crypto/stream.go - AES-256-GCM encryption/decryption
 
     internal/storage/ - Storage provider abstraction layer
-      - interface.go - Unified storage provider interface
-      - factory.go - Provider factory pattern
-      - s3.go - AWS S3 provider with multipart uploads
-      - googledrive.go - Google Drive provider with OAuth2
-      - mega.go - Mega.nz provider
-      - minio.go - MinIO provider with multipart uploads
+
+        interface.go - Unified storage provider interface
+
+        factory.go - Provider factory pattern
+
+        s3.go - AWS S3 provider with multipart uploads
+
+        googledrive.go - Google Drive provider with OAuth2
+
+        mega.go - Mega.nz provider
+
+        minio.go - MinIO provider with multipart uploads
 
     internal/pipeline/processor.go - Orchestrates the complete pipeline
 
@@ -54,7 +58,6 @@ Design Patterns:
     Interface-based design for pluggable storage backends
 
 Command Line Arguments
-
 Mandatory flags:
 
     --source or -s - Source files/directories to archive (can specify multiple)
@@ -109,8 +112,13 @@ Processing Options:
 
     --verbose or -v - Enable verbose logging
 
-External Dependencies
+Default Settings (config.json):
 
+    source_path - Set a default source path for your archives.
+
+    s3_filename - Set a default target filename for S3 archives.
+
+External Dependencies
 Cloud Storage:
 
     AWS SDK v2 for S3 integration
@@ -134,10 +142,14 @@ Build Requirements:
     Go 1.23+
 
     Storage provider credentials:
-      - AWS S3: AWS credentials via ~/.aws/credentials file or environment variables
-      - Google Drive: OAuth2 credentials JSON file and token
-      - Mega: Username and password
-      - MinIO: Access key ID, secret access key, and endpoint
+
+        AWS S3: AWS credentials via ~/.aws/credentials file or environment variables
+
+        Google Drive: OAuth2 credentials JSON file and token
+
+        Mega: Username and password
+
+        MinIO: Access key ID, secret access key, and endpoint
 
 Usage Examples
 
@@ -146,7 +158,8 @@ Usage Examples
     Google Drive: cloud_safe -s /path -p googledrive --gd-credentials creds.json -f file.tar
 
     Mega: cloud_safe -s /path -p mega -f file.tar
-      -f archive.tar.gz.enc
+
+        -f archive.tar.gz.enc
 
 Upload to MinIO:
 
@@ -173,7 +186,7 @@ cloud_safe -s /path/to/source -f output.tar
 cloud_safe -s /path/to/source -f output.tar -p googledrive --gd-credentials ./creds.json
 ./cloud_safe -s delete_me -f delete_me.tar -p googledrive --gd-credentials ~/.google/credentials.json
 
-#Custom config file location:
+# Custom config file location:
 cloud_safe -c /path/to/custom-config.json -s /path/to/source -f output.tar
 ./cloud_safe -c config.json -s delete_me -f delete_me.tar
 
@@ -183,6 +196,5 @@ To run the test suite, use the pytest command. If you want to reduce the verbosi
 
 enable virtual env
 source venv/bin/activate
-
 pytest --tb=no
 
