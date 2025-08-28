@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"cloud_safe/internal/compressor"
-	"cloud_safe/internal/config"
+	"cloud_safe/internal/setup"
 	"cloud_safe/internal/crypto"
 	"cloud_safe/internal/logger"
 	"cloud_safe/internal/progress"

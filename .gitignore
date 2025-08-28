@@ -7,9 +7,6 @@
 config.json
 
 ### Go ###
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -34,6 +31,8 @@ go.work
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc 
+
 
 # C extensions
 

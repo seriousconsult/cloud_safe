@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"cloud_safe/internal/config"
+	"cloud_safe/internal/setup"
 	"cloud_safe/internal/logger"
 )
 

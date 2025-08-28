@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"cloud_safe/internal/config"
+	"cloud_safe/internal/setup"
 	"cloud_safe/internal/logger"
 	"cloud_safe/internal/pipeline"
 
@@ -16,27 +16,27 @@ import (
 )
 
 var (
-	cfgFile              string
-	sourcePaths          []string
-	storageProvider      string
-	s3Bucket             string
-	s3Filename           string
-	googleDriveCredPath  string
-	googleDriveTokenPath string
-	googleDriveFolderID  string
-	megaUsername         string
-	megaPassword         string
-	minioEndpoint        string
-	minioAccessKeyID     string
-	minioSecretAccessKey string
-	minioBucket          string
-	minioUseSSL          bool
-	workers              int
-	chunkSize            int64
-	bufferSize           int
-	encrypt              bool
-	resume               bool
-	verbose              bool
+	cfgFile               string
+	sourcePaths           []string
+	storageProvider       string
+	s3Bucket              string
+	s3Filename            string
+	googleDriveCredPath   string
+	googleDriveTokenPath  string
+	googleDriveFolderID   string
+	megaUsername          string
+	megaPassword          string
+	minioEndpoint         string
+	minioAccessKeyID      string
+	minioSecretAccessKey  string
+	minioBucket           string
+	minioUseSSL           bool
+	workers               int
+	chunkSize             int64
+	bufferSize            int
+	encrypt               bool
+	resume                bool
+	verbose               bool
 )
 
 var rootCmd = &cobra.Command{
@@ -53,7 +53,7 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "Config file (default is ./config.json)")
+	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "Config file (default is .config/config.json)")
 	rootCmd.Flags().StringSliceVarP(&sourcePaths, "source", "s", []string{}, "Source files or directories to archive (can specify multiple)")
 	// Leave provider empty by default so config.json can supply the default
 	rootCmd.Flags().StringVarP(&storageProvider, "provider", "p", "", "Storage provider (s3, googledrive, mega, minio). If omitted, config.json default_settings.storage_provider is used; otherwise falls back to s3")
@@ -76,9 +76,9 @@ func init() {
 	rootCmd.Flags().BoolVarP(&resume, "resume", "r", true, "Enable resumable uploads")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 
-	rootCmd.MarkFlagRequired("source")
-	rootCmd.MarkFlagRequired("filename")
-
+	// The following two lines were removed. They are what caused the error.
+	// rootCmd.MarkFlagRequired("source")
+	// rootCmd.MarkFlagRequired("filename")
 }
 
 // getAWSProfile returns the AWS profile to use, defaulting to "sean"
@@ -101,22 +101,8 @@ func run(cmd *cobra.Command, args []string) error {
 	// Initialize logger
 	log := logger.New(verbose)
 
-	// Validate source paths
-	if len(sourcePaths) == 0 {
-		return fmt.Errorf("at least one source path must be specified")
-	}
-
-	for _, path := range sourcePaths {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			return fmt.Errorf("source path does not exist: %s", path)
-		}
-	}
-
-	// Start with minimal config (source paths and filename are required via flags)
-	cfg := &config.Config{
-		SourcePaths: sourcePaths,
-		S3Filename:  s3Filename,
-	}
+	// Start with a minimal config.
+	cfg := &config.Config{}
 
 	// Load configuration from file (will use defaults if file doesn't exist)
 	configPath := config.GetDefaultConfigPath()
@@ -128,7 +114,7 @@ func run(cmd *cobra.Command, args []string) error {
 	} else {
 		log.Debugf("Loaded configuration from %s", configPath)
 	}
-
+	
 	// Apply CLI flags only if explicitly set, so they override config.json
 	if cmd.Flags().Changed("provider") {
 		cfg.StorageProvider = storageProvider
@@ -184,6 +170,7 @@ func run(cmd *cobra.Command, args []string) error {
 	if cmd.Flags().Changed("resume") {
 		cfg.Resume = resume
 	}
+	
 	// Always set AWS env-derived values unless config.json provided overrides
 	if cfg.AWSRegion == "" {
 		cfg.AWSRegion = getAWSRegion()
@@ -195,6 +182,28 @@ func run(cmd *cobra.Command, args []string) error {
 	if cfg.StorageProvider == "" {
 		cfg.StorageProvider = "s3"
 		log.Debug("No storage provider specified via flags or config.json; defaulting to s3")
+	}
+
+	// Validate source paths and filename after config is loaded
+	if len(sourcePaths) > 0 {
+		cfg.SourcePaths = sourcePaths
+	}
+	if s3Filename != "" {
+		cfg.S3Filename = s3Filename
+	}
+	
+	if len(cfg.SourcePaths) == 0 {
+		return fmt.Errorf("at least one source path must be specified via config file or command-line flag")
+	}
+	
+	if cfg.S3Filename == "" {
+		return fmt.Errorf("filename must be specified via config file or command-line flag")
+	}
+
+	for _, path := range cfg.SourcePaths {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return fmt.Errorf("source path does not exist: %s", path)
+		}
 	}
 
 	// Create context with cancellation
@@ -239,4 +248,3 @@ func run(cmd *cobra.Command, args []string) error {
 	log.Debug("Returning from run() function")
 	return nil
 }
-
