@@ -53,7 +53,7 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "Config file (default is .config/config.json)")
+	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "Config file (default is config/config.json)")
 	rootCmd.Flags().StringSliceVarP(&sourcePaths, "source", "s", []string{}, "Source files or directories to archive (can specify multiple)")
 	// Leave provider empty by default so config.json can supply the default
 	rootCmd.Flags().StringVarP(&storageProvider, "provider", "p", "", "Storage provider (s3, googledrive, mega, minio). If omitted, config.json default_settings.storage_provider is used; otherwise falls back to s3")
@@ -86,7 +86,7 @@ func getAWSProfile() string {
 	if profile := os.Getenv("AWS_PROFILE"); profile != "" {
 		return profile
 	}
-	return "sean"
+	return ""
 }
 
 // getAWSRegion returns the AWS region to use, defaulting to "us-east-1"

@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings" // New import for string manipulation
+	"strings" 
+	"fmt"
 )
 
 // Config holds all configuration for the application
@@ -212,7 +213,14 @@ func (c *Config) LoadFromFile(configPath string) error {
 	return nil
 }
 
-// GetDefaultConfigPath returns the default path for the config file
 func GetDefaultConfigPath() string {
-	return filepath.Join(".", "config/config.json")
+
+    // Get the path and store it in a variable
+    path := filepath.Join("config/config.json")
+    
+    // Now print the variable
+    fmt.Printf("Looking for config file at: %s\n", path)
+    
+    // Return the path
+    return path
 }

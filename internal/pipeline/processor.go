@@ -63,6 +63,7 @@ func (p *Processor) Process(ctx context.Context) error {
 	}
 
 	p.logger.Infof("Estimated size: %.2f MB", float64(totalSize)/(1024*1024))
+	p.logger.Infof("Size: %d bytes", totalSize)
 
 	// Create progress tracker
 	tracker := progress.NewTracker(totalSize)
