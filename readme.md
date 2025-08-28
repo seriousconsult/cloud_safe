@@ -132,134 +132,108 @@ CloudSafe supports configuration via:
 # Show help for a command
 ./cloud_safe help [command]
 ```
-Core Components:
+## Storage Providers
+
+### AWS S3
+```bash
+./cloud_safe backup -s /data -p s3 -b your-bucket -f backup.tgz
+```
+
+### Google Drive
+```bash
+# First time setup
+google-drive-oauth2-cli --client_id=YOUR_CLIENT_ID --client_secret=YOUR_SECRET
+
+# Backup to Google Drive
+./cloud_safe backup -s /data -p googledrive --gd-folder FOLDER_ID -f backup.tgz
+```
+
+### Mega.nz
+```bash
+./cloud_safe backup -s /data -p mega -f backup.tgz \
+  --mega-username your@email.com --mega-password yourpassword
+```
+
+### MinIO
+```bash
+./cloud_safe backup -s /data -p minio \
+  --minio-endpoint localhost:9000 \
+  --minio-access-key minioadmin \
+  --minio-secret-key minioadmin \
+  --minio-bucket backups \
+  -f backup.tgz
+```
+
+## Examples
+
+### Encrypted Backup with Progress
+```bash
+./cloud_safe backup -s /important/data -f data_backup.tgz --encrypt -v
+```
+
+### Backup Multiple Directories
+```bash
+./cloud_safe backup -s /home/user/documents -s /home/user/pictures -f user_data.tgz
+```
+
+### Resume Failed Upload
+```bash
+./cloud_safe backup -s /large/data -f big_backup.tgz --resume
+```
+
+## Development
+
+### Building from Source
+```bash
+git clone https://github.com/yourusername/cloud_safe.git
+cd cloud_safe
+go build -o cloud_safe
+```
+
+### Running Tests
+```bash
+# Run all tests
+go test ./...
+
+# Run with verbose output
+go test -v ./...
+
+# Run specific test
+go test -run TestUploadS3
+```
+
+### Code Style
+- Follow standard Go formatting (`gofmt`)
+- Document all exported functions and types
+- Write tests for new features
+
+## Troubleshooting
+
+### Common Issues
+
+**Upload Fails with "Access Denied"**
+- Verify your credentials have the correct permissions
+- Check if the bucket exists and is accessible
+- For S3, ensure your region is correct
+
+**Slow Upload Speeds**
+- Increase the number of workers: `-w 8`
+- Adjust chunk size: `--chunk-size 256MB`
+- Check your network connection
+
+**Resume Not Working**
+- Ensure the `--resume` flag is set
+- Check that the temporary directory is writable
+- Verify the upload ID is still valid (some providers expire them)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-    cmd/root.go - CLI interface using Cobra framework
+## Support
 
-    internal/compressor/tar.go - Streaming TAR compression with multi-source support
-
-    internal/crypto/stream.go - AES-256-GCM encryption/decryption
-
-    internal/storage/ - Storage provider abstraction layer
-
-        interface.go - Unified storage provider interface
-
-        factory.go - Provider factory pattern
-
-        s3.go - AWS S3 provider with multipart uploads
-
-        googledrive.go - Google Drive provider with OAuth2
-
-        mega.go - Mega.nz provider
-
-        minio.go - MinIO provider with multipart uploads
-
-    internal/pipeline/processor.go - Orchestrates the complete pipeline
-
-    internal/progress/tracker.go - Real-time progress tracking
-
-    internal/utils/buffers.go - Memory-efficient buffer pooling
-
-Design Patterns:
-
-    Streaming pipeline architecture for memory efficiency
-
-    Worker pool pattern for concurrent uploads
-
-    Interface-based design for pluggable storage backends
-
-Command Line Arguments
-Mandatory flags:
-
-    --source or -s - Source files/directories to archive (can specify multiple)
-
-    --filename or -f - Target filename for the archive
-
-Storage Provider Selection:
-
-    --provider or -p - Storage provider: s3, googledrive, mega, or minio (default: s3)
-
-AWS S3 Options:
-
-    --bucket or -b - S3 bucket name (default: safe-storage-24)
-
-Google Drive Options:
-
-    --gd-credentials - Path to Google Drive credentials JSON file
-
-    --gd-token - Path to OAuth2 token file
-
-    --gd-folder - Google Drive folder ID (optional)
-
-Mega Options:
-
-    --mega-username - Mega account username
-
-    --mega-password - Mega account password
-
-MinIO Options:
-
-    --minio-endpoint - MinIO endpoint (e.g., localhost:9000)
-
-    --minio-access-key - MinIO access key ID
-
-    --minio-secret-key - MinIO secret access key
-
-    --minio-bucket - MinIO bucket name
-
-    --minio-ssl - Use SSL for MinIO connection (default: false)
-
-Processing Options:
-
-    --workers or -w - Number of concurrent workers (default: 4)
-
-    --chunk-size - Chunk size for uploads in bytes (default: 100MB)
-
-    --buffer-size - Buffer size for streaming operations (default: 64KB)
-
-    --encrypt or -e - Enable encryption (default: true)
-
-    --resume or -r - Enable resumable uploads (default: true)
-
-    --verbose or -v - Enable verbose logging
-
-Default Settings (config.json):
-
-    source_path - Set a default source path for your archives.
-
-    s3_filename - Set a default target filename for S3 archives.
-
-External Dependencies
-Cloud Storage:
-
-    AWS SDK v2 for S3 integration
-
-    Google Drive API for Google Drive integration
-
-    go-mega library for Mega.nz integration
-
-    MinIO Go SDK for MinIO integration
-
-    OAuth2 library for Google Drive authentication
-
-CLI & Progress:
-
-    Cobra for command-line interface
-
-    Progress tracking with real-time updates
-
-Build Requirements:
-
-    Go 1.23+
-
-    Storage provider credentials:
-
-        AWS S3: AWS credentials via ~/.aws/credentials file or environment variables
-
-        Google Drive: OAuth2 credentials JSON file and token
-
-        Mega: Username and password
-
-        MinIO: Access key ID, secret access key, and endpoint
-
-Ustar
+For support, please open an issue on our [GitHub repository](https://github.com/yourusername/cloud_safe/issues).
