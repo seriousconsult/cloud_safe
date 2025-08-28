@@ -190,18 +190,6 @@ cd cloud_safe
 go build -o cloud_safe
 ```
 
-### Running Tests
-```bash
-# Run all tests
-go test ./...
-
-# Run with verbose output
-go test -v ./...
-
-# Run specific test
-go test -run TestUploadS3
-```
-
 ### Code Style
 - Follow standard Go formatting (`gofmt`)
 - Document all exported functions and types
@@ -234,6 +222,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-## Support
-
-For support, please open an issue on our [GitHub repository](https://github.com/yourusername/cloud_safe/issues).
