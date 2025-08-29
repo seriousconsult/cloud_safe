@@ -1,4 +1,4 @@
-module cloud_safe
+module github.com/seriousconsult/cloud_safe
 
 go 1.23.0
 

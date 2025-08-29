@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
-	"cloud_safe/internal/logger"
-	"cloud_safe/internal/progress"
+	"github.com/seriousconsult/cloud_safe/internal/logger"
+	"github.com/seriousconsult/cloud_safe/internal/progress"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"

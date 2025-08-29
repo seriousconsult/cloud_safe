@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cloud_safe/internal/logger"
+	"github.com/seriousconsult/cloud_safe/internal/logger"
 )
 
 // TarCompressor handles streaming compression of directories

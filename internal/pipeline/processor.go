@@ -7,17 +7,17 @@ import (
 	"os"
 	"time"
 
-	"cloud_safe/internal/compressor"
-	"cloud_safe/internal/setup"
-	"cloud_safe/internal/crypto"
-	"cloud_safe/internal/logger"
-	"cloud_safe/internal/progress"
-	"cloud_safe/internal/storage"
+	"github.com/seriousconsult/cloud_safe/internal/compressor"
+	"github.com/seriousconsult/cloud_safe/internal/setup"
+	"github.com/seriousconsult/cloud_safe/internal/crypto"
+	"github.com/seriousconsult/cloud_safe/internal/logger"
+	"github.com/seriousconsult/cloud_safe/internal/progress"
+	"github.com/seriousconsult/cloud_safe/internal/storage"
 )
 
 // Processor orchestrates the entire pipeline
 type Processor struct {
-	config     *config.Config
+	config     *setup.Config
 	logger     *logger.Logger
 	compressor *compressor.TarCompressor
 	encryptor  *crypto.StreamEncryptor
@@ -25,7 +25,7 @@ type Processor struct {
 }
 
 // NewProcessor creates a new processor instance
-func NewProcessor(cfg *config.Config, log *logger.Logger) (*Processor, error) {
+func NewProcessor(cfg *setup.Config, log *logger.Logger) (*Processor, error) {
 	// Initialize compressor
 	comp := compressor.NewTarCompressor(log)
 

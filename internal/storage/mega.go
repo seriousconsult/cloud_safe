@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"cloud_safe/internal/logger"
-	"cloud_safe/internal/progress"
+	"github.com/seriousconsult/cloud_safe/internal/logger"
+	"github.com/seriousconsult/cloud_safe/internal/progress"
 
 	"github.com/t3rm1n4l/go-mega"
 )

@@ -2,15 +2,16 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"cloud_safe/internal/setup"
-	"cloud_safe/internal/logger"
-	"cloud_safe/internal/pipeline"
+	"github.com/seriousconsult/cloud_safe/internal/logger"
+	"github.com/seriousconsult/cloud_safe/internal/pipeline"
+	"github.com/seriousconsult/cloud_safe/internal/setup"
 
 	"github.com/spf13/cobra"
 )
@@ -53,7 +54,14 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "Config file (default is config/config.json)")
+	// Set default config file path
+	defaultConfigPath := "config/config.json"
+	if _, err := os.Stat(defaultConfigPath); err != nil {
+		// If the default config file doesn't exist, use an empty string
+		defaultConfigPath = ""
+	}
+
+	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", defaultConfigPath, "Config file (default is config/config.json)")
 	rootCmd.Flags().StringSliceVarP(&sourcePaths, "source", "s", []string{}, "Source files or directories to archive (can specify multiple)")
 	// Leave provider empty by default so config.json can supply the default
 	rootCmd.Flags().StringVarP(&storageProvider, "provider", "p", "", "Storage provider (s3, googledrive, mega, minio). If omitted, config.json default_settings.storage_provider is used; otherwise falls back to s3")
@@ -75,10 +83,6 @@ func init() {
 	rootCmd.Flags().BoolVarP(&encrypt, "encrypt", "e", true, "Enable encryption")
 	rootCmd.Flags().BoolVarP(&resume, "resume", "r", true, "Enable resumable uploads")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-
-	// The following two lines were removed. They are what caused the error.
-	// rootCmd.MarkFlagRequired("source")
-	// rootCmd.MarkFlagRequired("filename")
 }
 
 // getAWSProfile returns the AWS profile to use, defaulting to "sean"
@@ -101,20 +105,23 @@ func run(cmd *cobra.Command, args []string) error {
 	// Initialize logger
 	log := logger.New(verbose)
 
-	// Start with a minimal config.
-	cfg := &config.Config{}
+	// Only show debug info in verbose mode
+	if verbose {
+		wd, _ := os.Getwd()
+		log.Debugf("Working directory: %s, Config: %s", wd, cfgFile)
+	}
 
-	// Load configuration from file (will use defaults if file doesn't exist)
-	configPath := config.GetDefaultConfigPath()
-	if cfgFile != "" {
-		configPath = cfgFile
+	// Start with a minimal config.
+	cfg := &setup.Config{}
+	err := cfg.LoadFromFile(cfgFile)
+	if err != nil {
+		log.Debugf("Error loading config file: %v", err)
+		// Continue with default config if file doesn't exist
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to load config: %v", err)
+		}
 	}
-	if err := cfg.LoadFromFile(configPath); err != nil {
-		log.Infof("Failed to load config file %s: %v", configPath, err)
-	} else {
-		log.Debugf("Loaded configuration from %s", configPath)
-	}
-	
+
 	// Apply CLI flags only if explicitly set, so they override config.json
 	if cmd.Flags().Changed("provider") {
 		cfg.StorageProvider = storageProvider
@@ -184,12 +191,22 @@ func run(cmd *cobra.Command, args []string) error {
 		log.Debug("No storage provider specified via flags or config.json; defaulting to s3")
 	}
 
+	// Only show config in verbose mode
+	if verbose {
+		configJSON, _ := json.MarshalIndent(cfg, "", "  ")
+		log.Debugf("Config after loading:\n%s", string(configJSON))
+	}
+
 	// Validate source paths and filename after config is loaded
 	if len(sourcePaths) > 0 {
 		cfg.SourcePaths = sourcePaths
 	}
 	if s3Filename != "" {
 		cfg.S3Filename = s3Filename
+	}
+	
+	if verbose {
+		log.Debugf("Source paths: %v, S3 Filename: %s", cfg.SourcePaths, cfg.S3Filename)
 	}
 	
 	if len(cfg.SourcePaths) == 0 {

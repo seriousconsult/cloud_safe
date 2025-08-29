@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"cloud_safe/internal/progress"
+	"github.com/seriousconsult/cloud_safe/internal/progress"
 )
 
 // Provider represents the type of storage provider
@@ -44,6 +44,11 @@ type ResumableUpload interface {
 	GetUploadedSize() int64
 }
 
+// ProviderConfig holds common configuration for all storage providers
+type ProviderConfig struct {
+	Enabled bool `json:"enabled"`
+}
+
 // Config holds configuration for all storage providers
 type Config struct {
 	Provider Provider `json:"provider"`
@@ -63,6 +68,7 @@ type Config struct {
 
 // S3Config holds S3-specific configuration
 type S3Config struct {
+	ProviderConfig `json:",inline"`
 	Bucket     string `json:"bucket"`
 	Key        string `json:"key"`
 	Region     string `json:"region"`
@@ -75,6 +81,7 @@ type S3Config struct {
 
 // GoogleDriveConfig holds Google Drive-specific configuration
 type GoogleDriveConfig struct {
+	ProviderConfig `json:",inline"`
 	CredentialsPath string `json:"credentials_path"`
 	TokenPath       string `json:"token_path"`
 	FolderID        string `json:"folder_id"`
@@ -85,6 +92,9 @@ type GoogleDriveConfig struct {
 
 // MegaConfig holds Mega-specific configuration
 type MegaConfig struct {
+	ProviderConfig `json:",inline"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
 	Filename  string `json:"filename"`
 	ChunkSize int64  `json:"chunk_size"`
 	Resume    bool   `json:"resume"`
@@ -92,6 +102,7 @@ type MegaConfig struct {
 
 // MinIOConfig holds MinIO-specific configuration
 type MinIOConfig struct {
+	ProviderConfig `json:",inline"`
 	Endpoint        string `json:"endpoint"`
 	AccessKeyID     string `json:"access_key_id"`
 	SecretAccessKey string `json:"secret_access_key"`

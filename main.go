@@ -1,7 +1,7 @@
 package main
 
 import (
-	"cloud_safe/cmd"
+	"github.com/seriousconsult/cloud_safe/cmd"
 	"os"
 )
 

@@ -4,7 +4,7 @@
 
 #### CloudSafe ###
 # Configuration file with sensitive credentials
-config.json
+re-config.json
 
 ### Go ###
 # Binaries for programs and plugins

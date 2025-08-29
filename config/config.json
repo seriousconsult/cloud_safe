@@ -1,0 +1,26 @@
+{
+    "storage_providers": {
+        "s3": {
+            "enabled": true,
+            "bucket": "safe-storage-24",
+            "region": "us-east-1",
+            "profile": "default",
+            "chunk_size": 104857600,
+            "workers": 4,
+            "buffer_size": 65536,
+            "resume": true
+        }
+    },
+    "default_settings": {
+        "storage_provider": "s3",
+        "s3_bucket": "safe-storage-24",
+        "workers": 4,
+        "chunk_size": 104857600,
+        "buffer_size": 65536,
+        "encrypt": true,
+        "resume": true,
+        "encryption_key": "",
+        "source_path": "test_folder",
+        "s3_filename": "test.tar"
+    }
+}

@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"cloud_safe/internal/logger"
-	"cloud_safe/internal/progress"
-	"cloud_safe/internal/utils"
+	"github.com/seriousconsult/cloud_safe/internal/logger"
+	"github.com/seriousconsult/cloud_safe/internal/progress"
+	"github.com/seriousconsult/cloud_safe/internal/utils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"

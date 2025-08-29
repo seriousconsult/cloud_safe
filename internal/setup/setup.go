@@ -1,4 +1,4 @@
-package config
+package setup
 
 import (
 	"encoding/json"
@@ -74,44 +74,116 @@ func (c *Config) GetEncryptionKey() []byte {
 	return c.EncryptionKey
 }
 
+// ProviderConfig represents the common configuration for all storage providers
+type ProviderConfig struct {
+	Enabled bool `json:"enabled"`
+}
+
+// S3ProviderConfig represents S3 provider configuration
+type S3ProviderConfig struct {
+	ProviderConfig `json:",inline"`
+	Bucket     string `json:"bucket"`
+	Region     string `json:"region"`
+	Profile    string `json:"profile"`
+	ChunkSize  int64  `json:"chunk_size"`
+	Workers    int    `json:"workers"`
+	BufferSize int    `json:"buffer_size"`
+	Resume     bool   `json:"resume"`
+}
+
+// GoogleDriveProviderConfig represents Google Drive provider configuration
+type GoogleDriveProviderConfig struct {
+	ProviderConfig   `json:",inline"`
+	CredentialsPath string `json:"credentials_path"`
+	TokenPath       string `json:"token_path"`
+	FolderID        string `json:"folder_id"`
+	ChunkSize       int64  `json:"chunk_size"`
+	Resume          bool   `json:"resume"`
+}
+
+// MegaProviderConfig represents Mega.nz provider configuration
+type MegaProviderConfig struct {
+	ProviderConfig `json:",inline"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	ChunkSize int64  `json:"chunk_size"`
+	Resume    bool   `json:"resume"`
+}
+
+// MinIOProviderConfig represents MinIO provider configuration
+type MinIOProviderConfig struct {
+	ProviderConfig   `json:",inline"`
+	Endpoint        string `json:"endpoint"`
+	AccessKeyID     string `json:"access_key_id"`
+	SecretAccessKey string `json:"secret_access_key"`
+	Bucket          string `json:"bucket"`
+	UseSSL          bool   `json:"use_ssl"`
+	ChunkSize       int64  `json:"chunk_size"`
+	Workers         int    `json:"workers"`
+	BufferSize      int    `json:"buffer_size"`
+	Resume          bool   `json:"resume"`
+}
+
+// StorageProvidersConfig holds all storage provider configurations
+type StorageProvidersConfig struct {
+	S3         *S3ProviderConfig         `json:"s3,omitempty"`
+	GoogleDrive *GoogleDriveProviderConfig `json:"googledrive,omitempty"`
+	Mega        *MegaProviderConfig       `json:"mega,omitempty"`
+	MinIO       *MinIOProviderConfig      `json:"minio,omitempty"`
+}
+
 // FileConfig represents the JSON configuration file structure
 type FileConfig struct {
-	StorageProviders map[string]interface{} `json:"storage_providers"`
+	StorageProviders StorageProvidersConfig `json:"storage_providers"`
 	DefaultSettings struct {
 		StorageProvider string `json:"storage_provider"`
+		S3Bucket       string `json:"s3_bucket"`
 		Workers 	int 	`json:"workers"`
 		ChunkSize 	int64 	`json:"chunk_size"`
 		BufferSize 	int 	`json:"buffer_size"`
 		Encrypt 	bool 	`json:"encrypt"`
 		Resume 		bool 	`json:"resume"`
-		EncryptionKey 	string `json:"encryption_key"`
-		// New fields added
-		SourcePath string `json:"source_path"`
-		S3Filename string `json:"s3_filename"`
+		EncryptionKey  string `json:"encryption_key"`
+		SourcePath     string `json:"source_path"`
+		S3Filename     string `json:"s3_filename"`
 	} `json:"default_settings"`
 }
 
 // LoadFromFile loads configuration from a JSON file and merges with existing config
 func (c *Config) LoadFromFile(configPath string) error {
 	// Check if config file exists
+	if configPath == "" {
+		return fmt.Errorf("config file path is empty")
+	}
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		// Config file doesn't exist, return without error (use defaults/CLI flags)
-		return nil
+		return fmt.Errorf("config file does not exist: %s", configPath)
 	}
 
+	// Read the config file
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading config file: %w", err)
 	}
 
+	// Parse the config file
 	var fileConfig FileConfig
 	if err := json.Unmarshal(data, &fileConfig); err != nil {
-		return err
+		return fmt.Errorf("error parsing config file: %w", err)
 	}
 
-	// Apply default settings if not already set
+	// Debug: Print config file path only in verbose mode
+	if os.Getenv("VERBOSE") == "true" {
+		fmt.Printf("Loaded config from %s\n", configPath)
+	}
+
+	// Apply default settings if not already set by CLI flags
 	if c.StorageProvider == "" && fileConfig.DefaultSettings.StorageProvider != "" {
 		c.StorageProvider = fileConfig.DefaultSettings.StorageProvider
+	}
+	if c.S3Bucket == "" && fileConfig.DefaultSettings.S3Bucket != "" {
+		c.S3Bucket = fileConfig.DefaultSettings.S3Bucket
 	}
 	if c.Workers == 0 && fileConfig.DefaultSettings.Workers > 0 {
 		c.Workers = fileConfig.DefaultSettings.Workers
@@ -122,92 +194,80 @@ func (c *Config) LoadFromFile(configPath string) error {
 	if c.BufferSize == 0 && fileConfig.DefaultSettings.BufferSize > 0 {
 		c.BufferSize = fileConfig.DefaultSettings.BufferSize
 	}
-	// New logic to handle source_path and s3_filename
+	if len(c.EncryptionKey) == 0 && fileConfig.DefaultSettings.EncryptionKey != "" {
+		c.EncryptionKey = []byte(fileConfig.DefaultSettings.EncryptionKey)
+	}
 	if len(c.SourcePaths) == 0 && fileConfig.DefaultSettings.SourcePath != "" {
-		// Split the single string from the config file into a slice of strings
+		// Split the source path by comma to handle multiple paths
 		c.SourcePaths = strings.Split(fileConfig.DefaultSettings.SourcePath, ",")
 	}
 	if c.S3Filename == "" && fileConfig.DefaultSettings.S3Filename != "" {
 		c.S3Filename = fileConfig.DefaultSettings.S3Filename
 	}
+	
+	// Only set these if they haven't been set by CLI flags
+	if !c.Encrypt {
+		c.Encrypt = fileConfig.DefaultSettings.Encrypt
+	}
+	if !c.Resume {
+		c.Resume = fileConfig.DefaultSettings.Resume
+	}
 
-	// Apply provider-specific settings
-	if providerConfig, exists := fileConfig.StorageProviders[c.StorageProvider]; exists {
-		switch c.StorageProvider {
-		case "s3":
-			if s3Config, ok := providerConfig.(map[string]interface{}); ok {
-				if c.S3Bucket == "" {
-					if bucket, ok := s3Config["bucket"].(string); ok {
-						c.S3Bucket = bucket
-					}
-				}
-				if c.AWSRegion == "" {
-					if region, ok := s3Config["region"].(string); ok {
-						c.AWSRegion = region
-					}
-				}
-				if c.AWSProfile == "" {
-					if profile, ok := s3Config["profile"].(string); ok {
-						c.AWSProfile = profile
-					}
-				}
-				// The new S3Filename is a default setting, so it's handled above
-			}
-		case "googledrive":
-			if gdConfig, ok := providerConfig.(map[string]interface{}); ok {
-				if c.GoogleDriveCredentialsPath == "" {
-					if credPath, ok := gdConfig["credentials_path"].(string); ok {
-						c.GoogleDriveCredentialsPath = credPath
-					}
-				}
-				if c.GoogleDriveTokenPath == "" {
-					if tokenPath, ok := gdConfig["token_path"].(string); ok {
-						c.GoogleDriveTokenPath = tokenPath
-					}
-				}
-				if c.GoogleDriveFolderID == "" {
-					if folderID, ok := gdConfig["folder_id"].(string); ok {
-						c.GoogleDriveFolderID = folderID
-					}
-				}
-			}
-		case "mega":
-			if megaConfig, ok := providerConfig.(map[string]interface{}); ok {
-				if c.MegaUsername == "" {
-					if username, ok := megaConfig["username"].(string); ok {
-						c.MegaUsername = username
-					}
-				}
-				if c.MegaPassword == "" {
-					if password, ok := megaConfig["password"].(string); ok {
-						c.MegaPassword = password
-					}
-				}
-			}
-		case "minio":
-			if minioConfig, ok := providerConfig.(map[string]interface{}); ok {
-				if c.MinIOEndpoint == "" {
-					if endpoint, ok := minioConfig["endpoint"].(string); ok {
-						c.MinIOEndpoint = endpoint
-					}
-				}
-				if c.MinIOAccessKeyID == "" {
-					if accessKey, ok := minioConfig["access_key_id"].(string); ok {
-						c.MinIOAccessKeyID = accessKey
-					}
-				}
-				if c.MinIOSecretAccessKey == "" {
-					if secretKey, ok := minioConfig["secret_access_key"].(string); ok {
-						c.MinIOSecretAccessKey = secretKey
-					}
-				}
-				if c.MinIOBucket == "" {
-					if bucket, ok := minioConfig["bucket"].(string); ok {
-						c.MinIOBucket = bucket
-					}
-				}
-			}
+	// Apply S3 provider settings if enabled
+	if s3 := fileConfig.StorageProviders.S3; s3 != nil && s3.Enabled {
+		c.S3Bucket = s3.Bucket
+		c.AWSRegion = s3.Region
+		c.AWSProfile = s3.Profile
+		if s3.ChunkSize > 0 {
+			c.ChunkSize = s3.ChunkSize
 		}
+		if s3.Workers > 0 {
+			c.Workers = s3.Workers
+		}
+		if s3.BufferSize > 0 {
+			c.BufferSize = s3.BufferSize
+		}
+		c.Resume = s3.Resume
+	}
+
+	// Apply Google Drive provider settings if enabled
+	if gd := fileConfig.StorageProviders.GoogleDrive; gd != nil && gd.Enabled {
+		c.GoogleDriveCredentialsPath = gd.CredentialsPath
+		c.GoogleDriveTokenPath = gd.TokenPath
+		c.GoogleDriveFolderID = gd.FolderID
+		if gd.ChunkSize > 0 {
+			c.ChunkSize = gd.ChunkSize
+		}
+		c.Resume = gd.Resume
+	}
+
+	// Apply Mega provider settings if enabled
+	if mega := fileConfig.StorageProviders.Mega; mega != nil && mega.Enabled {
+		c.MegaUsername = mega.Username
+		c.MegaPassword = mega.Password
+		if mega.ChunkSize > 0 {
+			c.ChunkSize = mega.ChunkSize
+		}
+		c.Resume = mega.Resume
+	}
+
+	// Apply MinIO provider settings if enabled
+	if minio := fileConfig.StorageProviders.MinIO; minio != nil && minio.Enabled {
+		c.MinIOEndpoint = minio.Endpoint
+		c.MinIOAccessKeyID = minio.AccessKeyID
+		c.MinIOSecretAccessKey = minio.SecretAccessKey
+		c.MinIOBucket = minio.Bucket
+		c.MinIOUseSSL = minio.UseSSL
+		if minio.ChunkSize > 0 {
+			c.ChunkSize = minio.ChunkSize
+		}
+		if minio.Workers > 0 {
+			c.Workers = minio.Workers
+		}
+		if minio.BufferSize > 0 {
+			c.BufferSize = minio.BufferSize
+		}
+		c.Resume = minio.Resume
 	}
 
 	return nil
