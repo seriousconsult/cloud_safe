@@ -66,7 +66,7 @@ docker run -v $(pwd):/data cloud_safe [command] [flags]
 
 3. **Backup a Directory**
    ```bash
-   ./cloud_safe backup -s /path/to/backup -f my_backup.tar
+   ./cloud_safe  -s /path/to/backup -f my_backup.tar
    ```
 
 ## Configuration
@@ -112,13 +112,8 @@ CloudSafe supports configuration via:
 ### Basic Commands
 ```bash
 # Backup files to default storage provider
-./cloud_safe backup -s /path/to/source -f backup_name
+./cloud_safe -s /path/to/source -f backup_name
 
-# List available backups
-./cloud_safe list
-
-# Restore files from backup
-./cloud_safe restore -f backup_name -d /restore/path
 ```
 
 ### Common Options
@@ -136,7 +131,7 @@ CloudSafe supports configuration via:
 
 ### AWS S3
 ```bash
-./cloud_safe backup -s /data -p s3 -b your-bucket -f backup.tgz
+./cloud_safe  -s /data -p s3 -b your-bucket -f .tgz
 ```
 
 ### Google Drive
@@ -145,18 +140,18 @@ CloudSafe supports configuration via:
 google-drive-oauth2-cli --client_id=YOUR_CLIENT_ID --client_secret=YOUR_SECRET
 
 # Backup to Google Drive
-./cloud_safe backup -s /data -p googledrive --gd-folder FOLDER_ID -f backup.tgz
+./cloud_safe  -s /data -p googledrive --gd-folder FOLDER_ID -f backup.tgz
 ```
 
 ### Mega.nz
 ```bash
-./cloud_safe backup -s /data -p mega -f backup.tgz \
+./cloud_safe  -s /data -p mega -f backup.tgz \
   --mega-username your@email.com --mega-password yourpassword
 ```
 
 ### MinIO
 ```bash
-./cloud_safe backup -s /data -p minio \
+./cloud_safe  -s /data -p minio \
   --minio-endpoint localhost:9000 \
   --minio-access-key minioadmin \
   --minio-secret-key minioadmin \
@@ -168,17 +163,17 @@ google-drive-oauth2-cli --client_id=YOUR_CLIENT_ID --client_secret=YOUR_SECRET
 
 ### Encrypted Backup with Progress
 ```bash
-./cloud_safe backup -s /important/data -f data_backup.tgz --encrypt -v
+./cloud_safe -s /important/data -f data_backup.tgz
 ```
 
 ### Backup Multiple Directories
 ```bash
-./cloud_safe backup -s /home/user/documents -s /home/user/pictures -f user_data.tgz
+./cloud_safe -s /home/user/documents -s /home/user/pictures -f user_data.tgz
 ```
 
 ### Resume Failed Upload
 ```bash
-./cloud_safe backup -s /large/data -f big_backup.tgz --resume
+./cloud_safe -s /large/data -f big_backup.tgz --resume
 ```
 
 ## Development
@@ -190,12 +185,20 @@ cd cloud_safe
 go build -o cloud_safe
 ```
 
-### Code Style
-- Follow standard Go formatting (`gofmt`)
-- Document all exported functions and types
-- Write tests for new features
 
-## Troubleshooting
+### Test
+-s is verbose and optional
+
+```bash
+cd /cloud_safe/
+python3 -m venv venv
+source venv/bin/activate
+pip install pytest
+
+pytest -s
+
+deactivate
+```
 
 ### Common Issues
 
