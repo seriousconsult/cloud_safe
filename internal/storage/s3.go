@@ -105,10 +105,12 @@ func (s *S3Provider) uploadSinglePart(ctx context.Context, reader io.Reader, tra
 		return fmt.Errorf("failed to buffer data for single-part upload: %w", err)
 	}
 
+
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(s.config.Bucket),
 		Key:    aws.String(s.config.Key),
 		Body:   bytes.NewReader(buffer.Bytes()),
+		Tagging: aws.String("Source=cloud_safe"),
 	}
 
 	_, err = s.client.PutObject(ctx, input)

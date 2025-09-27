@@ -32,6 +32,7 @@ func NewS3MultipartUpload(client *s3.Client, bucket, key string, logger *logger.
 	input := &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
+		Tagging: aws.String("Source=cloud_safe"),
 	}
 
 	output, err := client.CreateMultipartUpload(context.Background(), input)
