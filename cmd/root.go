@@ -110,6 +110,10 @@ func run(cmd *cobra.Command, args []string) error {
 		wd, _ := os.Getwd()
 		log.Debugf("Working directory: %s, Config: %s", wd, cfgFile)
 	}
+	
+	if len(args) > 0 {
+        return fmt.Errorf("unknown command or argument: %s\n\nRun 'cloud_safe --help' for usage.", args[0])
+    }
 
 	// Start with a minimal config.
 	cfg := &setup.Config{}
