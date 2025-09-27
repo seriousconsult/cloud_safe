@@ -128,36 +128,9 @@ CloudSafe supports configuration via:
 ./cloud_safe help [command]
 ```
 ## Storage Providers
+- [Go to storeage provider execution guide](STORAGE_PROVIDER_EXECUTION.md)
+- [Go to storage provider configurtion guide](STORAGE_PROVIDER_CONFIGURATION.md)
 
-### AWS S3
-```bash
-./cloud_safe  -s /data -p s3 -b your-bucket -f .tgz
-```
-
-### Google Drive
-```bash
-# First time setup
-google-drive-oauth2-cli --client_id=YOUR_CLIENT_ID --client_secret=YOUR_SECRET
-
-# Backup to Google Drive
-./cloud_safe  -s /data -p googledrive --gd-folder FOLDER_ID -f backup.tgz
-```
-
-### Mega.nz
-```bash
-./cloud_safe  -s /data -p mega -f backup.tgz \
-  --mega-username your@email.com --mega-password yourpassword
-```
-
-### MinIO
-```bash
-./cloud_safe  -s /data -p minio \
-  --minio-endpoint localhost:9000 \
-  --minio-access-key minioadmin \
-  --minio-secret-key minioadmin \
-  --minio-bucket backups \
-  -f backup.tgz
-```
 
 ## Examples
 
